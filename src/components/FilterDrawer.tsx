@@ -55,7 +55,7 @@ export function FilterDrawer({ isOpen, onClose, currentFilter, onApply, bookId }
               </SelectTrigger>
               <SelectContent className="rounded-xl">
                 <SelectItem value="All">All Categories</SelectItem>
-                {book?.customCategories.map((cat) => (
+                {book?.customCategories?.map((cat) => (
                   <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                 ))}
               </SelectContent>

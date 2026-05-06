@@ -27,7 +27,12 @@ const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Shopping", "O
 
 const getLocalBooks = (): Book[] => {
   if (typeof window === 'undefined') return [];
-  return JSON.parse(localStorage.getItem('flowsnap_books') || '[]');
+  const books = JSON.parse(localStorage.getItem('flowsnap_books') || '[]');
+  // Pastikan data lama mempunyai customCategories
+  return books.map((b: any) => ({
+    ...b,
+    customCategories: b.customCategories || [...DEFAULT_CATEGORIES]
+  }));
 };
 
 const setLocalBooks = (books: Book[]) => {
@@ -64,6 +69,9 @@ export const addCategoryToBook = async (bookId: string, category: string) => {
   const books = getLocalBooks();
   const index = books.findIndex(b => b.id === bookId);
   if (index !== -1) {
+    if (!books[index].customCategories) {
+      books[index].customCategories = [...DEFAULT_CATEGORIES];
+    }
     if (!books[index].customCategories.includes(category)) {
       books[index].customCategories.push(category);
       setLocalBooks(books);

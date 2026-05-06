@@ -142,7 +142,7 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
-                      {book?.customCategories.map((cat) => (
+                      {book?.customCategories?.map((cat) => (
                         <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                       ))}
                     </SelectContent>
