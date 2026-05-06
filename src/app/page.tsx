@@ -26,7 +26,7 @@ export default function Home() {
         <div className="bg-primary p-3 rounded-2xl shadow-lg">
           <BookOpen className="w-8 h-8 text-white" />
         </div>
-        <h1 className="text-4xl font-bold tracking-tight text-primary">(BukuAkaun)</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-primary">BukuAkaun</h1>
       </div>
       <p className="text-muted-foreground text-center max-w-xs">
         Your elegant cash flow companion.
