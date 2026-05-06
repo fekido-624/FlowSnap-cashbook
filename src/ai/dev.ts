@@ -1,1 +1,3 @@
-// AI functionality disabled by user request.
+
+// Genkit dev mode initialization (empty for standard web runtime)
+export {};
