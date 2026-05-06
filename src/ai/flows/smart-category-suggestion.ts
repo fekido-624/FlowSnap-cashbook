@@ -16,6 +16,11 @@ const SuggestCategoriesInputSchema = z.object({
 });
 export type SuggestCategoriesInput = z.infer<typeof SuggestCategoriesInputSchema>;
 
+const PromptInputSchema = z.object({
+  description: z.string(),
+  categoriesContext: z.string().optional(),
+});
+
 const SuggestCategoriesOutputSchema = z.object({
   suggestedCategories: z.array(z.string()).describe('A list of suggested categories for the transaction, ordered by relevance.'),
 });
@@ -27,14 +32,14 @@ export async function suggestCategories(input: SuggestCategoriesInput): Promise<
 
 const prompt = ai.definePrompt({
   name: 'suggestCategoriesPrompt',
-  input: { schema: SuggestCategoriesInputSchema },
+  input: { schema: PromptInputSchema },
   output: { schema: SuggestCategoriesOutputSchema },
   prompt: `You are an AI assistant specialized in financial transaction categorization. Your goal is to suggest relevant categories for a given transaction based on its description.
 
 Here is the transaction description: "{{{description}}}"
 
-{{#if existingCategories}}
-Consider the following existing categories as a guide, but also suggest new ones if appropriate: {{{JSON.stringify existingCategories}}}
+{{#if categoriesContext}}
+Consider the following existing categories as a guide, but also suggest new ones if appropriate: {{{categoriesContext}}}
 {{/if}}
 
 Provide up to 5 suggested categories, ordered by relevance, in a JSON array format. Prioritize common financial categories and be concise. Only return the JSON array, nothing else.
@@ -48,7 +53,14 @@ const suggestCategoriesFlow = ai.defineFlow(
     outputSchema: SuggestCategoriesOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
+    const categoriesContext = input.existingCategories?.length 
+      ? input.existingCategories.join(', ') 
+      : undefined;
+
+    const { output } = await prompt({
+      description: input.description,
+      categoriesContext
+    });
     return output!;
   }
 );
