@@ -17,10 +17,10 @@ FlowSnap (BukuAkaun) adalah aplikasi pengurusan aliran tunai (cash flow) mudah a
 - `id`: string
 - `name`: string
 - `userId`: string
-- `netBalance`: number (Baki bersih)
+- `netBalance`: number
 - `totalCashIn`: number
 - `totalCashOut`: number
-- `customCategories`: string[] (Senarai kategori unik bagi setiap buku)
+- `customCategories`: string[]
 
 ### B. Transaction (Transaksi)
 - `id`: string
@@ -29,46 +29,52 @@ FlowSnap (BukuAkaun) adalah aplikasi pengurusan aliran tunai (cash flow) mudah a
 - `amount`: number
 - `method`: 'Cash' | 'Online'
 - `category`: string
-- `description`: string (optional)
-- `runningBalance`: number (Baki selepas transaksi ini direkod)
+- `description`: string
+- `runningBalance`: number
 
 ### C. Checklist (Senarai Bayaran)
 - `id`: string
 - `name`: string
-- `bookId`: string (Pautan ke Buku Akaun untuk auto-deduction)
+- `bookId`: string
 - `items`: ChecklistItem[]
-
-### D. ChecklistItem
-- `id`: string
-- `name`: string
-- `amount`: number
-- `payments`: Map<monthKey, { isPaid: boolean, transactionId: string }>
-- `validUntil`: string (Format YYYY-MM untuk tempoh aktif)
-- `excludedMonths`: string[] (Senarai bulan di mana item ini disembunyikan/dibatalkan)
 
 ## 4. Logik Sistem Utama
 
-### A. Hubungan Checklist & Buku Akaun
-Apabila pengguna menanda (*tick*) item dalam Checklist yang telah dipautkan ke sebuah Buku Akaun:
-1. Sistem secara automatik memanggil fungsi `addTransaction`.
-2. Satu transaksi 'out' dicipta dalam Buku Akaun berkaitan.
-3. `transactionId` disimpan dalam data item checklist untuk rujukan silang.
-4. Jika item di-*untick*, transaksi asal akan dipadamkan secara automatik.
+### A. Hubungan Checklist & Buku Akaun (Decoupled History)
+Apabila item di-*tick*:
+1. Transaksi 'out' dicipta dalam Buku Akaun.
+2. `transactionId` disimpan dalam checklist item.
+3. **Penting**: Jika item checklist dipadam, rekod dalam Buku Akaun **TIDAK** dipadam secara automatik untuk menjaga integriti sejarah kewangan.
 
 ### B. Pengurusan Bulanan (Monthly Override)
-- Sistem menggunakan `Carousel` untuk navigasi bulan ke bulan.
-- **Pengecualian**: Jika item dipadam pada bulan tertentu, ID bulan tersebut (YYYY-MM) disimpan dalam `excludedMonths`. Item tidak akan dipadam dari pangkalan data, cuma tidak dipaparkan pada bulan tersebut.
+- Menggunakan `excludedMonths: string[]` (format YYYY-MM).
+- Jika item dipadam pada bulan tertentu, ia masuk ke senarai pengecualian. 
+- Jika item sudah bertanda 'paid' pada bulan tersebut, memadam item akan mencetuskan fungsi `deleteTransaction` untuk memulihkan baki buku akaun.
 
-### C. Pengiraan Analisis
-- Tab Analisis mengira pecahan perbelanjaan secara dinamik menggunakan `useMemo`.
-- Pengiraan menggunakan pembulatan 2 tempat perpuluhan untuk memastikan ketepatan jumlah (Sum of Categories == Total Expense).
+## 5. Strategi Responsive UI (Masa Hadapan)
 
-## 5. Polisi Pemadaman
-1. **Padam Buku**: Memutuskan pautan (*un-link*) semua checklist berkaitan dan menukar semua status item kepada *un-paid*.
-2. **Padam Item Checklist**: Sejarah transaksi dalam Buku Akaun **kekal selamat** (decoupled) untuk mengelakkan kehilangan rekod kewangan lampau.
+Untuk menukar aplikasi ini kepada paparan Web (Desktop) yang lebih luas, kita tidak perlu mencipta fail `page.tsx` yang baru. Sebaliknya, kita gunakan teknik **Single Codebase Responsive**:
 
-## 6. Visi Masa Hadapan: Strategi Responsive UI
-Untuk menyokong paparan Desktop (Web) yang lebih luas:
-- **Layout**: Gunakan `md:hidden` untuk menyembunyikan navigasi bawah pada skrin besar dan `md:flex` untuk memaparkan sidebar tetap.
-- **Grid System**: Tukar `max-w-md` kepada `max-w-screen-xl` dan gunakan grid (cth: `grid-cols-1 md:grid-cols-3`) untuk memaparkan Ringkasan Baki, Senarai Transaksi, dan Analisis secara serentak dalam satu skrin.
-- **Shared Logic**: Semua fungsi dalam `src/lib/services/db.ts` boleh dikongsi tanpa perubahan antara UI Mobile dan Desktop.
+### A. Perubahan Layout (Container)
+Tukar `max-w-md` (had saiz mobile) kepada `max-w-7xl` pada skrin besar menggunakan Tailwind:
+```tsx
+// Contoh:
+<div className="max-w-md md:max-w-7xl mx-auto px-4">
+```
+
+### B. Grid & Column
+Gunakan sistem grid untuk paparan bersebelahan pada desktop:
+```tsx
+// Mobile: 1 kolum, Desktop: 3 kolum
+<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+  <div className="md:col-span-2">Main Content</div>
+  <div className="hidden md:block">Sidebar Analytics</div>
+</div>
+```
+
+### C. Navigasi
+Gunakan `md:hidden` pada *Bottom Nav* dan `hidden md:flex` pada *Sidebar* tetap.
+
+## 6. Polisi Pemadaman
+1. **Padam Buku**: Putuskan pautan checklist secara automatik.
+2. **Padam Item Checklist**: Transaksi sejarah kekal dalam Buku Akaun (kecuali jika dipadam menggunakan fungsi Monthly Override).
