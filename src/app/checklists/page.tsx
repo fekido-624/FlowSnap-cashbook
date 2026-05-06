@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/contexts/auth-context";
-import { subscribeToChecklists, createChecklist, subscribeToBooks, deleteChecklist, Checklist, Book } from "@/lib/services/db";
+import { subscribeToChecklists, createChecklist, updateChecklist, subscribeToBooks, deleteChecklist, Checklist, Book } from "@/lib/services/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Plus, ListChecks, ArrowLeft, ChevronRight, ShoppingBag, Trash2, Wallet } from "lucide-react";
+import { Plus, ListChecks, ArrowLeft, ChevronRight, ShoppingBag, Trash2, Wallet, Edit3 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +21,7 @@ export default function ChecklistsPage() {
   const [newName, setNewName] = useState("");
   const [selectedBookId, setSelectedBookId] = useState<string>("none");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingChecklist, setEditingChecklist] = useState<Checklist | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -39,21 +40,36 @@ export default function ChecklistsPage() {
     }
   }, [user]);
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     if (!user || !newName.trim()) return;
     try {
-      await createChecklist(
-        user.uid, 
-        newName.trim(), 
-        selectedBookId === "none" ? undefined : selectedBookId
-      );
+      if (editingChecklist) {
+        await updateChecklist(editingChecklist.id, newName.trim(), selectedBookId);
+        toast({ title: "Dikemas Kini", description: "Checklist telah berjaya dikemas kini." });
+      } else {
+        await createChecklist(
+          user.uid, 
+          newName.trim(), 
+          selectedBookId === "none" ? undefined : selectedBookId
+        );
+        toast({ title: "Berjaya", description: "Checklist baru telah dicipta." });
+      }
       setNewName("");
       setSelectedBookId("none");
+      setEditingChecklist(null);
       setIsDialogOpen(false);
-      toast({ title: "Berjaya", description: "Checklist baru telah dicipta." });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Ralat", description: e.message });
     }
+  };
+
+  const handleEdit = (e: React.MouseEvent, checklist: Checklist) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEditingChecklist(checklist);
+    setNewName(checklist.name);
+    setSelectedBookId(checklist.bookId || "none");
+    setIsDialogOpen(true);
   };
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
@@ -82,7 +98,14 @@ export default function ChecklistsPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Senarai Anda</h2>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) {
+              setEditingChecklist(null);
+              setNewName("");
+              setSelectedBookId("none");
+            }
+          }}>
             <DialogTrigger asChild>
               <Button size="sm" className="rounded-full h-9 flex gap-1">
                 <Plus className="w-4 h-4" /> Baru
@@ -90,7 +113,7 @@ export default function ChecklistsPage() {
             </DialogTrigger>
             <DialogContent className="rounded-3xl max-w-[90vw] sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Buat Checklist Baru</DialogTitle>
+                <DialogTitle>{editingChecklist ? 'Edit Checklist' : 'Buat Checklist Baru'}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
@@ -119,8 +142,8 @@ export default function ChecklistsPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button className="w-full h-12 rounded-xl font-bold" onClick={handleCreate}>
-                  Simpan Checklist
+                <Button className="w-full h-12 rounded-xl font-bold" onClick={handleSave}>
+                  {editingChecklist ? 'Kemas Kini' : 'Simpan Checklist'}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -152,16 +175,24 @@ export default function ChecklistsPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={(e) => handleEdit(e, c)}
+                        className="rounded-full h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/5"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </Button>
                       <Button 
                         variant="ghost" 
                         size="icon" 
                         onClick={(e) => handleDelete(e, c.id)}
-                        className="rounded-full h-10 w-10 text-muted-foreground hover:text-rose-500 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="rounded-full h-9 w-9 text-muted-foreground hover:text-rose-500 hover:bg-rose-50"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
-                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                      <ChevronRight className="w-5 h-5 text-muted-foreground ml-1" />
                     </div>
                   </CardHeader>
                 </Card>

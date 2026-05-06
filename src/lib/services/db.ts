@@ -260,6 +260,16 @@ export const createChecklist = async (userId: string, name: string, bookId?: str
   return newChecklist;
 };
 
+export const updateChecklist = async (id: string, name: string, bookId?: string) => {
+  const checklists = getLocalChecklists();
+  const idx = checklists.findIndex(c => c.id === id);
+  if (idx !== -1) {
+    checklists[idx].name = name;
+    checklists[idx].bookId = bookId === "none" ? undefined : bookId;
+    setLocalChecklists(checklists);
+  }
+};
+
 export const subscribeToChecklists = (userId: string, callback: (data: Checklist[]) => void) => {
   const update = () => {
     const data = getLocalChecklists().filter(c => c.userId === userId);
@@ -293,6 +303,30 @@ export const addChecklistItem = async (checklistId: string, name: string, amount
   };
 
   checklists[idx].items.push(newItem);
+  setLocalChecklists(checklists);
+};
+
+export const updateChecklistItem = async (userId: string, checklistId: string, itemId: string, name: string, amount: number) => {
+  const checklists = getLocalChecklists();
+  const cIdx = checklists.findIndex(c => c.id === checklistId);
+  if (cIdx === -1) return;
+
+  const checklist = checklists[cIdx];
+  const iIdx = checklist.items.findIndex(i => i.id === itemId);
+  if (iIdx === -1) return;
+
+  const item = checklist.items[iIdx];
+  
+  // Jika item sudah dibayar dan ada pautan buku akaun, kemas kini transaksi juga
+  if (item.isPaid && item.transactionId && checklist.bookId) {
+    await updateTransaction(userId, checklist.bookId, item.transactionId, {
+      amount: amount,
+      description: `Bayaran: ${name} (${checklist.name})`
+    });
+  }
+
+  item.name = name;
+  item.amount = amount;
   setLocalChecklists(checklists);
 };
 

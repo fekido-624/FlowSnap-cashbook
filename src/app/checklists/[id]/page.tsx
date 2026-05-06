@@ -6,17 +6,20 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { 
   subscribeToChecklist, 
   addChecklistItem, 
+  updateChecklistItem,
   toggleChecklistItem, 
   deleteChecklistItem, 
   deleteChecklist,
-  Checklist 
+  Checklist,
+  ChecklistItem
 } from "@/lib/services/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Plus, Trash2, Wallet, ReceiptText, CheckCircle2, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ArrowLeft, Plus, Trash2, Wallet, ReceiptText, CheckCircle2, Loader2, Edit2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ChecklistDetailPage() {
@@ -26,6 +29,9 @@ export default function ChecklistDetailPage() {
   const [newItemName, setNewItemName] = useState("");
   const [newItemAmount, setNewItemAmount] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editingItem, setEditingItem] = useState<ChecklistItem | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editAmount, setEditAmount] = useState("");
   const router = useRouter();
   const { toast } = useToast();
 
@@ -58,6 +64,23 @@ export default function ChecklistDetailPage() {
       setNewItemName("");
       setNewItemAmount("");
       toast({ title: "Item Ditambah", description: "Item baru telah ditambah ke dalam senarai." });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Ralat", description: e.message });
+    }
+  };
+
+  const handleEditItem = (item: ChecklistItem) => {
+    setEditingItem(item);
+    setEditName(item.name);
+    setEditAmount(item.amount.toString());
+  };
+
+  const handleUpdateItem = async () => {
+    if (!user || !editingItem || !editName.trim() || !editAmount) return;
+    try {
+      await updateChecklistItem(user.uid, id, editingItem.id, editName.trim(), parseFloat(editAmount));
+      setEditingItem(null);
+      toast({ title: "Item Dikemas Kini", description: "Maklumat item telah disimpan." });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Ralat", description: e.message });
     }
@@ -193,14 +216,24 @@ export default function ChecklistDetailPage() {
                       )}
                     </div>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => handleDeleteItem(item.id)}
-                    className="rounded-full text-muted-foreground hover:text-rose-500"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleEditItem(item)}
+                      className="rounded-full text-muted-foreground hover:text-primary"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleDeleteItem(item.id)}
+                      className="rounded-full text-muted-foreground hover:text-rose-500"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -219,6 +252,38 @@ export default function ChecklistDetailPage() {
           </div>
         )}
       </div>
+
+      <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
+        <DialogContent className="rounded-3xl max-w-[90vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Item</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nama Barang</Label>
+              <Input 
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="rounded-xl h-12"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Harga (RM)</Label>
+              <Input 
+                type="number"
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+                className="rounded-xl h-12"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button className="w-full h-12 rounded-xl font-bold" onClick={handleUpdateItem}>
+              Simpan Perubahan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
