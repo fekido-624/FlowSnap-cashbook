@@ -64,7 +64,6 @@ export default function ChecklistsPage() {
   };
 
   const handleEdit = (e: React.MouseEvent, checklist: Checklist) => {
-    e.preventDefault();
     e.stopPropagation();
     setEditingChecklist(checklist);
     setNewName(checklist.name);
@@ -73,7 +72,6 @@ export default function ChecklistsPage() {
   };
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
-    e.preventDefault();
     e.stopPropagation();
     if (!confirm("Padam keseluruhan checklist ini?")) return;
     try {
@@ -158,7 +156,11 @@ export default function ChecklistsPage() {
             </div>
           ) : (
             checklists.map((c) => (
-              <Link key={c.id} href={`/checklists/${c.id}`}>
+              <div 
+                key={c.id} 
+                onClick={() => router.push(`/checklists/${c.id}`)}
+                className="cursor-pointer"
+              >
                 <Card className="border-none shadow-sm rounded-2xl overflow-hidden group active:scale-[0.98] transition-all">
                   <CardHeader className="p-5 flex flex-row items-center justify-between space-y-0">
                     <div className="flex items-center gap-4">
@@ -177,6 +179,7 @@ export default function ChecklistsPage() {
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button 
+                        type="button"
                         variant="ghost" 
                         size="icon" 
                         onClick={(e) => handleEdit(e, c)}
@@ -185,6 +188,7 @@ export default function ChecklistsPage() {
                         <Edit3 className="w-4 h-4" />
                       </Button>
                       <Button 
+                        type="button"
                         variant="ghost" 
                         size="icon" 
                         onClick={(e) => handleDelete(e, c.id)}
@@ -196,7 +200,7 @@ export default function ChecklistsPage() {
                     </div>
                   </CardHeader>
                 </Card>
-              </Link>
+              </div>
             ))
           )}
         </div>
