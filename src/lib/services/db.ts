@@ -1,25 +1,10 @@
-import { 
-  collection, 
-  addDoc, 
-  query, 
-  where, 
-  onSnapshot, 
-  orderBy, 
-  serverTimestamp,
-  updateDoc,
-  doc,
-  increment,
-  getDoc,
-  Timestamp,
-  getDocs
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
 
+// Mock implementation of DB services using localStorage
 export interface Book {
   id: string;
   name: string;
   userId: string;
-  createdAt: any;
+  createdAt: { toDate: () => Date };
   netBalance: number;
   totalCashIn: number;
   totalCashOut: number;
@@ -34,64 +19,97 @@ export interface Transaction {
   method: 'Cash' | 'Online';
   category: string;
   description?: string;
-  timestamp: Timestamp;
+  timestamp: { toDate: () => Date };
   runningBalance: number;
 }
 
+const getLocalBooks = (): Book[] => {
+  if (typeof window === 'undefined') return [];
+  return JSON.parse(localStorage.getItem('flowsnap_books') || '[]');
+};
+
+const setLocalBooks = (books: Book[]) => {
+  localStorage.setItem('flowsnap_books', JSON.stringify(books));
+};
+
+const getLocalTransactions = (bookId: string): Transaction[] => {
+  if (typeof window === 'undefined') return [];
+  return JSON.parse(localStorage.getItem(`flowsnap_txs_${bookId}`) || '[]');
+};
+
+const setLocalTransactions = (bookId: string, txs: Transaction[]) => {
+  localStorage.setItem(`flowsnap_txs_${bookId}`, JSON.stringify(txs));
+};
+
 export const createBook = async (userId: string, name: string) => {
-  return await addDoc(collection(db, "books"), {
+  const books = getLocalBooks();
+  const newBook: Book = {
+    id: Math.random().toString(36).substr(2, 9),
     userId,
     name,
-    createdAt: serverTimestamp(),
+    createdAt: { toDate: () => new Date() },
     netBalance: 0,
     totalCashIn: 0,
     totalCashOut: 0
-  });
+  };
+  books.unshift(newBook);
+  setLocalBooks(books);
+  return newBook;
 };
 
 export const subscribeToBooks = (userId: string, callback: (books: Book[]) => void) => {
-  const q = query(collection(db, "books"), where("userId", "==", userId), orderBy("createdAt", "desc"));
-  return onSnapshot(q, (snapshot) => {
-    const books = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
+  const update = () => {
+    const books = getLocalBooks().filter(b => b.userId === userId);
     callback(books);
-  });
+  };
+  update();
+  const interval = setInterval(update, 1000);
+  return () => clearInterval(interval);
 };
 
 export const subscribeToTransactions = (bookId: string, filters: any, callback: (txs: Transaction[]) => void) => {
-  let q = query(collection(db, `books/${bookId}/transactions`), orderBy("timestamp", "desc"));
-  
-  // Filtering logic would ideally be here, but for simpler Firestore rules and indices, 
-  // we can also filter client-side for this mobile-first app version unless data is massive.
-  return onSnapshot(q, (snapshot) => {
-    const txs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
-    callback(txs);
-  });
+  const update = () => {
+    const txs = getLocalTransactions(bookId).map(tx => ({
+      ...tx,
+      timestamp: { toDate: () => new Date(tx.timestamp as any) }
+    }));
+    // Sort by date desc
+    txs.sort((a, b) => b.timestamp.toDate().getTime() - a.timestamp.toDate().getTime());
+    callback(txs as any);
+  };
+  update();
+  const interval = setInterval(update, 1000);
+  return () => clearInterval(interval);
 };
 
-export const addTransaction = async (userId: string, bookId: string, data: Omit<Transaction, 'id' | 'bookId' | 'userId' | 'timestamp' | 'runningBalance'>) => {
-  const bookRef = doc(db, "books", bookId);
-  const bookSnap = await getDoc(bookRef);
-  
-  if (!bookSnap.exists()) throw new Error("Book not found");
-  
-  const currentBalance = bookSnap.data().netBalance || 0;
+export const addTransaction = async (userId: string, bookId: string, data: any) => {
+  const books = getLocalBooks();
+  const bookIndex = books.findIndex(b => b.id === bookId);
+  if (bookIndex === -1) throw new Error("Book not found");
+
+  const currentBalance = books[bookIndex].netBalance;
   const newBalance = data.type === 'in' ? currentBalance + data.amount : currentBalance - data.amount;
 
-  const txData = {
+  const txs = getLocalTransactions(bookId);
+  const newTx: Transaction = {
     ...data,
+    id: Math.random().toString(36).substr(2, 9),
     userId,
     bookId,
-    timestamp: Timestamp.now(),
+    timestamp: new Date() as any, // Will be parsed back in subscribe
     runningBalance: newBalance
   };
 
-  const txRef = await addDoc(collection(db, `books/${bookId}/transactions`), txData);
+  txs.unshift(newTx);
+  setLocalTransactions(bookId, txs);
 
-  await updateDoc(bookRef, {
-    netBalance: newBalance,
-    totalCashIn: increment(data.type === 'in' ? data.amount : 0),
-    totalCashOut: increment(data.type === 'out' ? data.amount : 0)
-  });
+  books[bookIndex].netBalance = newBalance;
+  if (data.type === 'in') {
+    books[bookIndex].totalCashIn += data.amount;
+  } else {
+    books[bookIndex].totalCashOut += data.amount;
+  }
+  setLocalBooks(books);
 
-  return txRef;
+  return newTx;
 };

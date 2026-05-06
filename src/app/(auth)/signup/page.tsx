@@ -1,9 +1,8 @@
+
 "use client";
 
 import { useState } from "react";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,15 +15,14 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
+  const { signup } = useAuth();
   const { toast } = useToast();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      router.push("/books");
+      await signup(email);
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -48,7 +46,7 @@ export default function SignupPage() {
       <Card className="border-none shadow-xl bg-card rounded-[2rem]">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Create account</CardTitle>
-          <CardDescription>Enter your email below to start tracking.</CardDescription>
+          <CardDescription>Local development mode enabled.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignup} className="space-y-4">
@@ -76,7 +74,7 @@ export default function SignupPage() {
               />
             </div>
             <Button type="submit" className="w-full h-12 rounded-xl text-lg font-semibold" disabled={loading}>
-              {loading ? "Creating account..." : "Sign Up"}
+              {loading ? "Creating account..." : "Sign Up (Local)"}
             </Button>
           </form>
         </CardContent>
