@@ -19,7 +19,8 @@ import {
   Smartphone,
   Trash2,
   Search,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  TrendingDown
 } from "lucide-react";
 import { TransactionModal } from "@/components/TransactionModal";
 import { FilterDrawer } from "@/components/FilterDrawer";
@@ -75,8 +76,8 @@ export default function BookDetailPage() {
     });
   }, [transactions, filter, searchQuery]);
 
-  // Statistik perbelanjaan mengikut kategori
-  const categoryStats = useMemo(() => {
+  // Statistik perbelanjaan mengikut kategori dengan pembulatan tepat
+  const { categoryStats, totalExpenseSum } = useMemo(() => {
     const expenses = filteredTransactions.filter(tx => tx.type === 'out');
     const totalExpense = expenses.reduce((sum, tx) => sum + tx.amount, 0);
     
@@ -86,17 +87,22 @@ export default function BookDetailPage() {
       return acc;
     }, {});
 
-    return Object.entries(stats)
+    const mappedStats = Object.entries(stats)
       .map(([name, value]: any) => ({
         name,
-        value,
+        value: Math.round(value * 100) / 100,
         percentage: totalExpense > 0 ? (value / totalExpense) * 100 : 0
       }))
       .sort((a, b) => b.value - a.value);
+
+    return {
+      categoryStats: mappedStats,
+      totalExpenseSum: Math.round(totalExpense * 100) / 100
+    };
   }, [filteredTransactions]);
 
   const filteredStats = useMemo(() => {
-    return filteredTransactions.reduce((acc, tx) => {
+    const stats = filteredTransactions.reduce((acc, tx) => {
       if (tx.type === 'in') {
         acc.totalIn += tx.amount;
         acc.net += tx.amount;
@@ -106,6 +112,12 @@ export default function BookDetailPage() {
       }
       return acc;
     }, { totalIn: 0, totalOut: 0, net: 0 });
+
+    return {
+      totalIn: Math.round(stats.totalIn * 100) / 100,
+      totalOut: Math.round(stats.totalOut * 100) / 100,
+      net: Math.round(stats.net * 100) / 100
+    };
   }, [filteredTransactions]);
 
   const handleEditTx = (tx: Transaction) => {
@@ -140,7 +152,7 @@ export default function BookDetailPage() {
 
   if (!book) return (
     <div className="flex items-center justify-center h-svh">
-      <p className="text-muted-foreground animate-pulse">Memuatkan buku...</p>
+      <p className="text-muted-foreground animate-pulse font-bold">Memuatkan buku...</p>
     </div>
   );
 
@@ -178,7 +190,7 @@ export default function BookDetailPage() {
               {isFilterActive ? 'Baki (Ditapis)' : 'Baki Bersih'}
             </span>
             <span className="text-5xl font-black tracking-tighter">
-              RM{filteredStats.net.toLocaleString()}
+              RM{filteredStats.net.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </span>
           </div>
           
@@ -188,14 +200,14 @@ export default function BookDetailPage() {
                 <div className="w-2 h-2 rounded-full bg-emerald-400" />
                 <span className="text-[10px] uppercase font-bold opacity-70">Masuk</span>
               </div>
-              <span className="text-lg font-bold truncate">RM{filteredStats.totalIn.toLocaleString()}</span>
+              <span className="text-lg font-bold truncate">RM{filteredStats.totalIn.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
             <div className="bg-white/10 rounded-3xl p-4 flex flex-col items-center">
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-2 h-2 rounded-full bg-rose-400" />
                 <span className="text-[10px] uppercase font-bold opacity-70">Keluar</span>
               </div>
-              <span className="text-lg font-bold truncate">RM{filteredStats.totalOut.toLocaleString()}</span>
+              <span className="text-lg font-bold truncate">RM{filteredStats.totalOut.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
         </Card>
@@ -250,7 +262,7 @@ export default function BookDetailPage() {
                       <div className="flex justify-between items-start mb-1">
                         <h3 className="font-bold text-sm truncate">{tx.category}</h3>
                         <span className={`font-black text-sm ${tx.type === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                          {tx.type === 'in' ? '+' : '-'}RM{tx.amount.toLocaleString()}
+                          {tx.type === 'in' ? '+' : '-'}RM{tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                       <div className="flex justify-between items-end">
@@ -263,7 +275,7 @@ export default function BookDetailPage() {
                           {tx.description && <p className="text-[10px] text-muted-foreground italic truncate">{tx.description}</p>}
                         </div>
                         <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full font-bold text-muted-foreground">
-                          Bal: RM{tx.runningBalance.toLocaleString()}
+                          {isFilterActive ? 'Baki Sejarah' : 'Baki'}: RM{tx.runningBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                     </div>
@@ -275,7 +287,16 @@ export default function BookDetailPage() {
 
           <TabsContent value="analytics" className="space-y-6">
             <div className="bg-card p-6 rounded-[2rem] shadow-sm space-y-6">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Pecahan Perbelanjaan</h3>
+              <div className="flex flex-col gap-1 border-b border-dashed pb-4">
+                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  <TrendingDown className="w-4 h-4 text-rose-500" />
+                  Pecahan Perbelanjaan
+                </h3>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-black">RM{totalExpenseSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase">Jumlah (Keluar)</span>
+                </div>
+              </div>
               
               {categoryStats.length === 0 ? (
                 <p className="text-center py-10 text-sm text-muted-foreground italic">Tiada data perbelanjaan untuk dipaparkan.</p>
@@ -286,7 +307,7 @@ export default function BookDetailPage() {
                       <div className="flex justify-between items-end">
                         <span className="text-sm font-bold">{stat.name}</span>
                         <div className="text-right">
-                          <span className="text-xs font-black">RM{stat.value.toLocaleString()}</span>
+                          <span className="text-xs font-black">RM{stat.value.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                           <span className="text-[10px] text-muted-foreground ml-2">({stat.percentage.toFixed(0)}%)</span>
                         </div>
                       </div>
