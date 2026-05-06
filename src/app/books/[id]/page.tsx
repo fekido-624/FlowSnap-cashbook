@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -16,12 +17,17 @@ import {
   Calendar,
   Wallet,
   Smartphone,
-  Trash2
+  Trash2,
+  Search,
+  PieChart as PieChartIcon
 } from "lucide-react";
 import { TransactionModal } from "@/components/TransactionModal";
 import { FilterDrawer } from "@/components/FilterDrawer";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 
 export default function BookDetailPage() {
   const { id } = useParams() as { id: string };
@@ -29,6 +35,7 @@ export default function BookDetailPage() {
   const [book, setBook] = useState<Book | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filter, setFilter] = useState({ method: 'All', category: 'All', dateRange: null as any });
+  const [searchQuery, setSearchQuery] = useState("");
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [txType, setTxType] = useState<'in' | 'out'>('in');
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
@@ -61,11 +68,33 @@ export default function BookDetailPage() {
     return transactions.filter(tx => {
       const matchMethod = filter.method === 'All' || tx.method === filter.method;
       const matchCategory = filter.category === 'All' || tx.category === filter.category;
-      return matchMethod && matchCategory;
+      const matchSearch = tx.category.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (tx.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+                          tx.amount.toString().includes(searchQuery);
+      return matchMethod && matchCategory && matchSearch;
     });
-  }, [transactions, filter]);
+  }, [transactions, filter, searchQuery]);
 
-  // Kira statistik berdasarkan transaksi yang telah ditapis
+  // Statistik perbelanjaan mengikut kategori
+  const categoryStats = useMemo(() => {
+    const expenses = filteredTransactions.filter(tx => tx.type === 'out');
+    const totalExpense = expenses.reduce((sum, tx) => sum + tx.amount, 0);
+    
+    const stats = expenses.reduce((acc: any, tx) => {
+      if (!acc[tx.category]) acc[tx.category] = 0;
+      acc[tx.category] += tx.amount;
+      return acc;
+    }, {});
+
+    return Object.entries(stats)
+      .map(([name, value]: any) => ({
+        name,
+        value,
+        percentage: totalExpense > 0 ? (value / totalExpense) * 100 : 0
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [filteredTransactions]);
+
   const filteredStats = useMemo(() => {
     return filteredTransactions.reduce((acc, tx) => {
       if (tx.type === 'in') {
@@ -115,7 +144,7 @@ export default function BookDetailPage() {
     </div>
   );
 
-  const isFilterActive = filter.method !== 'All' || filter.category !== 'All';
+  const isFilterActive = filter.method !== 'All' || filter.category !== 'All' || searchQuery !== "";
 
   return (
     <div className="max-w-md mx-auto min-h-svh flex flex-col bg-background pb-32">
@@ -142,7 +171,7 @@ export default function BookDetailPage() {
       </header>
 
       <div className="px-6 space-y-6 overflow-y-auto mobile-scroll-container">
-        {/* Balance Card - Now reflects filtered stats */}
+        {/* Balance Card */}
         <Card className="bg-primary text-white border-none shadow-xl rounded-[2.5rem] p-8">
           <div className="flex flex-col items-center gap-1 text-center mb-8">
             <span className="text-sm font-medium opacity-80 uppercase tracking-widest">
@@ -171,59 +200,104 @@ export default function BookDetailPage() {
           </div>
         </Card>
 
-        {/* Transactions Section */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold flex items-center gap-2">
-              <History className="w-5 h-5 text-primary" />
-              {isFilterActive ? 'Hasil Tapisan' : 'Transaksi Terkini'}
-            </h2>
-            <span className="text-xs text-muted-foreground font-medium">{filteredTransactions.length} item</span>
-          </div>
+        {/* Search & Tabs */}
+        <Tabs defaultValue="transactions" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 rounded-2xl h-12 bg-muted/50 p-1 mb-6">
+            <TabsTrigger value="transactions" className="rounded-xl font-bold flex gap-2">
+              <History className="w-4 h-4" /> Transaksi
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="rounded-xl font-bold flex gap-2">
+              <PieChartIcon className="w-4 h-4" /> Analisis
+            </TabsTrigger>
+          </TabsList>
 
-          <div className="space-y-3">
-            {filteredTransactions.length === 0 ? (
-              <div className="text-center py-10 opacity-50">
-                <Smartphone className="w-10 h-10 mx-auto mb-2" />
-                <p className="text-sm">Tiada transaksi dijumpai</p>
-              </div>
-            ) : (
-              filteredTransactions.map((tx) => (
-                <Card 
-                  key={tx.id} 
-                  className="border-none shadow-sm rounded-2xl overflow-hidden p-4 flex items-center gap-4 cursor-pointer active:scale-95 transition-transform"
-                  onClick={() => handleEditTx(tx)}
-                >
-                  <div className={`p-3 rounded-2xl ${tx.type === 'in' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
-                    {tx.type === 'in' ? <ArrowUpCircle className="w-6 h-6" /> : <ArrowDownCircle className="w-6 h-6" />}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start mb-1">
-                      <h3 className="font-bold text-sm truncate">{tx.category}</h3>
-                      <span className={`font-black text-sm ${tx.type === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {tx.type === 'in' ? '+' : '-'}RM{tx.amount.toLocaleString()}
-                      </span>
+          <TabsContent value="transactions" className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input 
+                placeholder="Cari kategori atau catatan..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 h-12 rounded-2xl border-none bg-muted/30 focus-visible:ring-primary shadow-sm"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                {isFilterActive ? 'Hasil Carian' : 'Semua Rekod'}
+              </h2>
+              <span className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded-full">{filteredTransactions.length} item</span>
+            </div>
+
+            <div className="space-y-3">
+              {filteredTransactions.length === 0 ? (
+                <div className="text-center py-10 opacity-50 bg-muted/20 rounded-3xl border-2 border-dashed">
+                  <Smartphone className="w-10 h-10 mx-auto mb-2" />
+                  <p className="text-sm font-medium">Tiada rekod dijumpai</p>
+                </div>
+              ) : (
+                filteredTransactions.map((tx) => (
+                  <Card 
+                    key={tx.id} 
+                    className="border-none shadow-sm rounded-2xl overflow-hidden p-4 flex items-center gap-4 cursor-pointer active:scale-95 transition-transform bg-card"
+                    onClick={() => handleEditTx(tx)}
+                  >
+                    <div className={`p-3 rounded-2xl ${tx.type === 'in' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                      {tx.type === 'in' ? <ArrowUpCircle className="w-6 h-6" /> : <ArrowDownCircle className="w-6 h-6" />}
                     </div>
-                    <div className="flex justify-between items-end">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                          <Wallet className="w-3 h-3" /> {tx.method}
-                          <span className="mx-1">•</span>
-                          {format(tx.timestamp.toDate(), "MMM dd, hh:mm a")}
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start mb-1">
+                        <h3 className="font-bold text-sm truncate">{tx.category}</h3>
+                        <span className={`font-black text-sm ${tx.type === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {tx.type === 'in' ? '+' : '-'}RM{tx.amount.toLocaleString()}
                         </span>
-                        {tx.description && <p className="text-[10px] text-muted-foreground italic truncate">{tx.description}</p>}
                       </div>
-                      <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full font-bold text-muted-foreground">
-                        Bal: RM{tx.runningBalance.toLocaleString()}
-                      </span>
+                      <div className="flex justify-between items-end">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <Wallet className="w-3 h-3" /> {tx.method}
+                            <span className="mx-1">•</span>
+                            {format(tx.timestamp.toDate(), "MMM dd, hh:mm a")}
+                          </span>
+                          {tx.description && <p className="text-[10px] text-muted-foreground italic truncate">{tx.description}</p>}
+                        </div>
+                        <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full font-bold text-muted-foreground">
+                          Bal: RM{tx.runningBalance.toLocaleString()}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              ))
-            )}
-          </div>
-        </div>
+                  </Card>
+                ))
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="bg-card p-6 rounded-[2rem] shadow-sm space-y-6">
+              <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Pecahan Perbelanjaan</h3>
+              
+              {categoryStats.length === 0 ? (
+                <p className="text-center py-10 text-sm text-muted-foreground italic">Tiada data perbelanjaan untuk dipaparkan.</p>
+              ) : (
+                <div className="space-y-6">
+                  {categoryStats.map((stat) => (
+                    <div key={stat.name} className="space-y-2">
+                      <div className="flex justify-between items-end">
+                        <span className="text-sm font-bold">{stat.name}</span>
+                        <div className="text-right">
+                          <span className="text-xs font-black">RM{stat.value.toLocaleString()}</span>
+                          <span className="text-[10px] text-muted-foreground ml-2">({stat.percentage.toFixed(0)}%)</span>
+                        </div>
+                      </div>
+                      <Progress value={stat.percentage} className="h-2 rounded-full" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Floating Action Buttons */}
