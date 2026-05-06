@@ -100,10 +100,30 @@ export const createBook = async (userId: string, name: string) => {
 };
 
 export const deleteBook = async (bookId: string) => {
+  // 1. Padam buku akaun
   const books = getLocalBooks();
   const updatedBooks = books.filter(b => b.id !== bookId);
   setLocalBooks(updatedBooks);
+  
+  // 2. Padam semua transaksi berkaitan buku tersebut
   localStorage.removeItem(`flowsnap_txs_${bookId}`);
+
+  // 3. Reset checklist yang dipautkan: buang pautan bookId dan untick semua item
+  const checklists = getLocalChecklists();
+  const updatedChecklists = checklists.map(checklist => {
+    if (checklist.bookId === bookId) {
+      return {
+        ...checklist,
+        bookId: undefined, // Buang pautan ke buku yang sudah tiada
+        items: checklist.items.map(item => ({
+          ...item,
+          payments: {} // Reset semua status bayaran (un-tick secara pukal)
+        }))
+      };
+    }
+    return checklist;
+  });
+  setLocalChecklists(updatedChecklists);
 };
 
 export const addCategoryToBook = async (bookId: string, category: string) => {
