@@ -1,4 +1,1 @@
-import { config } from 'dotenv';
-config();
-
-import '@/ai/flows/smart-category-suggestion.ts';
+// AI functionality disabled by user request.
