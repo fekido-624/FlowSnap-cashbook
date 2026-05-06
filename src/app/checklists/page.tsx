@@ -2,16 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/contexts/auth-context";
-import { subscribeToChecklists, createChecklist, subscribeToBooks, Checklist, Book } from "@/lib/services/db";
+import { subscribeToChecklists, createChecklist, subscribeToBooks, deleteChecklist, Checklist, Book } from "@/lib/services/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Plus, ListChecks, ArrowLeft, ChevronRight, ShoppingBag, Trash2 } from "lucide-react";
+import { Plus, ListChecks, ArrowLeft, ChevronRight, ShoppingBag, Trash2, Wallet } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ChecklistsPage() {
   const { user, loading } = useAuth();
@@ -21,6 +22,7 @@ export default function ChecklistsPage() {
   const [selectedBookId, setSelectedBookId] = useState<string>("none");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
@@ -39,14 +41,31 @@ export default function ChecklistsPage() {
 
   const handleCreate = async () => {
     if (!user || !newName.trim()) return;
-    await createChecklist(
-      user.uid, 
-      newName.trim(), 
-      selectedBookId === "none" ? undefined : selectedBookId
-    );
-    setNewName("");
-    setSelectedBookId("none");
-    setIsDialogOpen(false);
+    try {
+      await createChecklist(
+        user.uid, 
+        newName.trim(), 
+        selectedBookId === "none" ? undefined : selectedBookId
+      );
+      setNewName("");
+      setSelectedBookId("none");
+      setIsDialogOpen(false);
+      toast({ title: "Berjaya", description: "Checklist baru telah dicipta." });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Ralat", description: e.message });
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm("Padam keseluruhan checklist ini?")) return;
+    try {
+      await deleteChecklist(id);
+      toast({ title: "Dipadam", description: "Checklist telah berjaya dibuang." });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Ralat", description: e.message });
+    }
   };
 
   if (loading || !user) return null;
@@ -117,7 +136,7 @@ export default function ChecklistsPage() {
           ) : (
             checklists.map((c) => (
               <Link key={c.id} href={`/checklists/${c.id}`}>
-                <Card className="border-none shadow-sm rounded-2xl overflow-hidden group active:scale-95 transition-transform">
+                <Card className="border-none shadow-sm rounded-2xl overflow-hidden group active:scale-[0.98] transition-all">
                   <CardHeader className="p-5 flex flex-row items-center justify-between space-y-0">
                     <div className="flex items-center gap-4">
                       <div className="bg-primary/10 p-3 rounded-2xl group-hover:bg-primary/20 transition-colors">
@@ -125,12 +144,25 @@ export default function ChecklistsPage() {
                       </div>
                       <div className="flex flex-col">
                         <CardTitle className="text-lg font-bold">{c.name}</CardTitle>
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                          {c.items.filter(i => i.isPaid).length} / {c.items.length} ITEM SELESAI
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                            {c.items.filter(i => i.isPaid).length} / {c.items.length} ITEM SELESAI
+                          </span>
+                          {c.bookId && <Wallet className="w-3 h-3 text-primary opacity-50" />}
+                        </div>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={(e) => handleDelete(e, c.id)}
+                        className="rounded-full h-10 w-10 text-muted-foreground hover:text-rose-500 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                    </div>
                   </CardHeader>
                 </Card>
               </Link>
@@ -142,13 +174,13 @@ export default function ChecklistsPage() {
       {/* Footer Nav */}
       <div className="fixed bottom-6 left-6 right-6 max-w-md mx-auto">
         <nav className="bg-white/80 backdrop-blur-lg border border-white shadow-2xl rounded-full p-2 flex justify-around items-center">
-          <Link href="/books" className="p-3 rounded-full hover:bg-muted text-muted-foreground">
+          <Link href="/books" className="p-3 rounded-full hover:bg-muted text-muted-foreground transition-colors">
             <ShoppingBag className="w-6 h-6" />
           </Link>
           <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white shadow-lg shadow-primary/30">
             <ListChecks className="w-6 h-6" />
           </div>
-          <Link href="/profile" className="p-3 rounded-full hover:bg-muted text-muted-foreground">
+          <Link href="/profile" className="p-3 rounded-full hover:bg-muted text-muted-foreground transition-colors">
             <Plus className="w-6 h-6 rotate-45" />
           </Link>
         </nav>

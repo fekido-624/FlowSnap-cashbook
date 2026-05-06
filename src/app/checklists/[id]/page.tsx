@@ -16,7 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Plus, Trash2, Wallet, ReceiptText, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Wallet, ReceiptText, CheckCircle2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ChecklistDetailPage() {
@@ -25,6 +25,7 @@ export default function ChecklistDetailPage() {
   const [checklist, setChecklist] = useState<Checklist | null>(null);
   const [newItemName, setNewItemName] = useState("");
   const [newItemAmount, setNewItemAmount] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -52,18 +53,44 @@ export default function ChecklistDetailPage() {
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemName.trim() || !newItemAmount) return;
-    await addChecklistItem(id, newItemName.trim(), parseFloat(newItemAmount));
-    setNewItemName("");
-    setNewItemAmount("");
+    try {
+      await addChecklistItem(id, newItemName.trim(), parseFloat(newItemAmount));
+      setNewItemName("");
+      setNewItemAmount("");
+      toast({ title: "Item Ditambah", description: "Item baru telah ditambah ke dalam senarai." });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Ralat", description: e.message });
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    try {
+      await deleteChecklistItem(id, itemId);
+      toast({ title: "Item Dipadam", description: "Item telah berjaya dibuang." });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Ralat", description: e.message });
+    }
   };
 
   const handleDeleteChecklist = async () => {
     if (!confirm("Padam keseluruhan checklist ini? Transaksi berkaitan (jika ada) juga akan dipadam.")) return;
-    await deleteChecklist(id);
-    router.push("/checklists");
+    setIsDeleting(true);
+    try {
+      await deleteChecklist(id);
+      toast({ title: "Checklist Dipadam", description: "Keseluruhan senarai telah dibuang." });
+      router.push("/checklists");
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Ralat", description: e.message });
+      setIsDeleting(false);
+    }
   };
 
-  if (!checklist) return null;
+  if (!checklist) return (
+    <div className="flex flex-col items-center justify-center h-svh gap-2">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <p className="text-muted-foreground text-sm">Memuatkan senarai...</p>
+    </div>
+  );
 
   return (
     <div className="max-w-md mx-auto min-h-svh bg-background pb-32">
@@ -74,8 +101,14 @@ export default function ChecklistDetailPage() {
           </Button>
           <h1 className="text-xl font-bold truncate">{checklist.name}</h1>
         </div>
-        <Button variant="ghost" size="icon" onClick={handleDeleteChecklist} className="rounded-full text-rose-500 hover:bg-rose-50">
-          <Trash2 className="w-5 h-5" />
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={handleDeleteChecklist} 
+          disabled={isDeleting}
+          className="rounded-full text-rose-500 hover:bg-rose-50"
+        >
+          {isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
         </Button>
       </header>
 
@@ -102,22 +135,22 @@ export default function ChecklistDetailPage() {
         <form onSubmit={handleAddItem} className="space-y-3 bg-muted/30 p-4 rounded-[2rem] border border-muted">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-[10px] font-bold ml-1">Nama Barang</Label>
+              <Label className="text-[10px] font-bold ml-1 text-muted-foreground uppercase tracking-widest">Nama Barang</Label>
               <Input 
                 placeholder="Beras, Telur..." 
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
-                className="h-10 rounded-xl"
+                className="h-10 rounded-xl border-none shadow-sm"
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px] font-bold ml-1">Harga (RM)</Label>
+              <Label className="text-[10px] font-bold ml-1 text-muted-foreground uppercase tracking-widest">Harga (RM)</Label>
               <Input 
                 type="number"
                 placeholder="0.00" 
                 value={newItemAmount}
                 onChange={(e) => setNewItemAmount(e.target.value)}
-                className="h-10 rounded-xl"
+                className="h-10 rounded-xl border-none shadow-sm"
               />
             </div>
           </div>
@@ -128,9 +161,9 @@ export default function ChecklistDetailPage() {
 
         {/* Checklist Items */}
         <div className="space-y-3">
-          <h2 className="text-sm font-bold flex items-center gap-2">
+          <h2 className="text-sm font-bold flex items-center gap-2 text-muted-foreground">
             <ReceiptText className="w-4 h-4 text-primary" />
-            Barang Belanja
+            BARANG BELANJA
           </h2>
           
           {checklist.items.length === 0 ? (
@@ -163,7 +196,7 @@ export default function ChecklistDetailPage() {
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    onClick={() => deleteChecklistItem(id, item.id)}
+                    onClick={() => handleDeleteItem(item.id)}
                     className="rounded-full text-muted-foreground hover:text-rose-500"
                   >
                     <Trash2 className="w-4 h-4" />
