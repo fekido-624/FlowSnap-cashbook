@@ -188,3 +188,30 @@ export const updateTransaction = async (userId: string, bookId: string, txId: st
 
   return updatedTx;
 };
+
+export const deleteTransaction = async (bookId: string, txId: string) => {
+  const books = getLocalBooks();
+  const bookIndex = books.findIndex(b => b.id === bookId);
+  if (bookIndex === -1) throw new Error("Buku tidak dijumpai");
+
+  const txs = getLocalTransactions(bookId);
+  const txIndex = txs.findIndex(t => t.id === txId);
+  if (txIndex === -1) throw new Error("Transaksi tidak dijumpai");
+
+  const txToDelete = txs[txIndex];
+
+  // Tolak impak transaksi yang dipadam daripada baki buku
+  if (txToDelete.type === 'in') {
+    books[bookIndex].netBalance -= txToDelete.amount;
+    books[bookIndex].totalCashIn -= txToDelete.amount;
+  } else {
+    books[bookIndex].netBalance += txToDelete.amount;
+    books[bookIndex].totalCashOut -= txToDelete.amount;
+  }
+
+  // Buang transaksi daripada senarai
+  txs.splice(txIndex, 1);
+  
+  setLocalTransactions(bookId, txs);
+  setLocalBooks(books);
+};

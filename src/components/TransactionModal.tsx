@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addTransaction, updateTransaction, addCategoryToBook, subscribeToBook, Book, Transaction } from "@/lib/services/db";
+import { addTransaction, updateTransaction, deleteTransaction, addCategoryToBook, subscribeToBook, Book, Transaction } from "@/lib/services/db";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { suggestCategories } from "@/ai/flows/smart-category-suggestion";
-import { Sparkles, Loader2, Plus, X } from "lucide-react";
+import { Sparkles, Loader2, Plus, X, Trash2 } from "lucide-react";
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -90,6 +90,22 @@ export function TransactionModal({ isOpen, onClose, type: initialType, bookId, e
     setNewCategoryName("");
     setIsAddingNewCategory(false);
     toast({ title: "Kategori Ditambah", description: `"${newCategoryName}" telah ditambah ke dalam buku ini.` });
+  };
+
+  const handleDelete = async () => {
+    if (!editingTransaction) return;
+    if (!confirm("Adakah anda pasti mahu memadam transaksi ini?")) return;
+
+    setLoading(true);
+    try {
+      await deleteTransaction(bookId, editingTransaction.id);
+      toast({ title: "Dipadam", description: "Transaksi telah berjaya dipadam." });
+      onClose();
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Ralat", description: error.message });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -257,7 +273,7 @@ export function TransactionModal({ isOpen, onClose, type: initialType, bookId, e
              </div>
           )}
 
-          <DialogFooter className="pt-4">
+          <DialogFooter className="pt-4 flex flex-col gap-3">
             <Button 
               type="submit" 
               className={`w-full h-14 rounded-2xl text-lg font-bold shadow-lg ${type === 'in' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-rose-500 hover:bg-rose-600'}`}
@@ -265,6 +281,18 @@ export function TransactionModal({ isOpen, onClose, type: initialType, bookId, e
             >
               {loading ? "Memproses..." : editingTransaction ? "Kemas Kini" : "Simpan Transaksi"}
             </Button>
+            
+            {editingTransaction && (
+              <Button 
+                type="button" 
+                variant="ghost" 
+                className="w-full h-12 rounded-xl text-rose-500 font-bold flex gap-2 hover:bg-rose-50"
+                onClick={handleDelete}
+                disabled={loading}
+              >
+                <Trash2 className="w-4 h-4" /> Padam Transaksi
+              </Button>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>
