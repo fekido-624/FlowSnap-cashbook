@@ -36,10 +36,11 @@ import {
   Edit2, 
   Calendar,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  History
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { format, addMonths, startOfMonth, parse } from "date-fns";
+import { format, addMonths, startOfMonth } from "date-fns";
 
 export default function ChecklistDetailPage() {
   const { id } = useParams() as { id: string };
@@ -57,7 +58,6 @@ export default function ChecklistDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // Jana 12 bulan dari sekarang sebagai timeline
   const months = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
       const d = addMonths(startOfMonth(new Date()), i);
@@ -93,7 +93,6 @@ export default function ChecklistDetailPage() {
     if (!checklist) return { total: 0, paid: 0, pending: 0 };
     const monthKey = months[currentSlide].key;
     
-    // Tapis item yang sah untuk bulan ini sahaja
     const validItems = checklist.items.filter(item => {
       if (!item.validUntil) return true;
       return item.validUntil >= monthKey;
@@ -174,7 +173,6 @@ export default function ChecklistDetailPage() {
       </header>
 
       <div className="px-6 space-y-6">
-        {/* Month Navigation */}
         <div className="flex items-center justify-between bg-primary/5 p-4 rounded-3xl">
           <Button variant="ghost" size="icon" onClick={() => api?.scrollPrev()} disabled={currentSlide === 0}>
             <ChevronLeft className="w-6 h-6" />
@@ -188,7 +186,6 @@ export default function ChecklistDetailPage() {
           </Button>
         </div>
 
-        {/* Stats Summary */}
         <Card className="bg-primary text-white border-none shadow-xl rounded-[2.5rem] p-6">
           <div className="flex flex-col items-center text-center mb-6">
             <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-1">Status Bayaran: {months[currentSlide].label}</span>
@@ -206,7 +203,6 @@ export default function ChecklistDetailPage() {
           </div>
         </Card>
 
-        {/* Carousel Content */}
         <Carousel setApi={setApi} className="w-full">
           <CarouselContent>
             {months.map((month) => (
@@ -220,7 +216,7 @@ export default function ChecklistDetailPage() {
                     <span className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded-full">{filteredItems.length} ITEM</span>
                   </div>
 
-                  <div className="space-y-2 min-h-[200px]">
+                  <div className="space-y-3 min-h-[200px]">
                     {filteredItems.length === 0 ? (
                       <div className="text-center py-10 opacity-30 text-xs italic bg-muted/20 rounded-2xl">
                         Tiada komitmen untuk bulan ini.
@@ -248,7 +244,6 @@ export default function ChecklistDetailPage() {
           </CarouselContent>
         </Carousel>
 
-        {/* Add Item Form */}
         <form onSubmit={handleAddItem} className="space-y-3 bg-muted/30 p-4 rounded-[2rem] border border-muted mt-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -314,23 +309,41 @@ function ItemRow({ item, userUid, checklistId, monthKey, onEdit }: { item: Check
   const isPaid = item.payments?.[monthKey]?.isPaid || false;
   const transactionId = item.payments?.[monthKey]?.transactionId;
 
+  // Kira sejarah bayaran terkumpul
+  const historyStats = useMemo(() => {
+    const paidMonths = Object.values(item.payments || {}).filter(p => p.isPaid);
+    const count = paidMonths.length;
+    const total = count * item.amount;
+    return { count, total };
+  }, [item.payments, item.amount]);
+
   return (
-    <div className={`flex items-center gap-4 p-4 rounded-2xl border-none shadow-sm transition-all ${isPaid ? 'bg-muted/50 opacity-60' : 'bg-card'}`}>
+    <div className={`flex items-center gap-4 p-4 rounded-2xl border-none shadow-sm transition-all ${isPaid ? 'bg-muted/50' : 'bg-card'}`}>
       <Checkbox 
         checked={isPaid} 
         onCheckedChange={() => toggleChecklistItem(userUid, checklistId, item.id, monthKey)}
         className="w-6 h-6 rounded-lg border-2"
       />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className={`font-bold text-sm truncate ${isPaid ? 'line-through' : ''}`}>{item.name}</p>
+        <div className="flex items-center gap-2 mb-0.5">
+          <p className={`font-bold text-sm truncate ${isPaid ? 'line-through text-muted-foreground' : ''}`}>{item.name}</p>
         </div>
-        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-          <span className="font-black text-primary">RM{item.amount.toLocaleString()}</span>
-          {transactionId && (
-            <span className="flex items-center gap-0.5 bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-full font-bold">
-              <CheckCircle2 className="w-2.5 h-2.5" /> Direkod
-            </span>
+        
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2 text-[10px]">
+            <span className="font-black text-primary">RM{item.amount.toLocaleString()}</span>
+            {transactionId && (
+              <span className="flex items-center gap-0.5 bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-full font-bold">
+                <CheckCircle2 className="w-2.5 h-2.5" /> Direkod
+              </span>
+            )}
+          </div>
+          
+          {historyStats.count > 0 && (
+            <div className="flex items-center gap-1 text-[9px] text-muted-foreground bg-primary/5 w-fit px-2 py-0.5 rounded-lg border border-primary/5">
+              <History className="w-2.5 h-2.5 text-primary/50" />
+              <span>Terkumpul: <b className="text-foreground">RM{historyStats.total.toLocaleString()}</b> ({historyStats.count} bln)</span>
+            </div>
           )}
         </div>
       </div>
@@ -341,7 +354,11 @@ function ItemRow({ item, userUid, checklistId, monthKey, onEdit }: { item: Check
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={() => deleteChecklistItem(checklistId, item.id)}
+          onClick={() => {
+            if (confirm(`Padam item "${item.name}"? Sejarah bayaran juga akan dipadam.`)) {
+              deleteChecklistItem(checklistId, item.id);
+            }
+          }}
           className="rounded-full h-8 w-8 text-muted-foreground hover:text-rose-500"
         >
           <Trash2 className="w-4 h-4" />
