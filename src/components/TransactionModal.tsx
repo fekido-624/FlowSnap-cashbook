@@ -34,11 +34,11 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
   const [newCategoryName, setNewCategoryName] = useState("");
 
   useEffect(() => {
-    if (bookId) {
+    if (bookId && isOpen) {
       const unsub = subscribeToBook(bookId, (data) => setBook(data));
       return () => unsub();
     }
-  }, [bookId]);
+  }, [bookId, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -55,7 +55,10 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
     if (desc.length < 3) return;
     setIsSuggesting(true);
     try {
-      const result = await suggestCategories({ description: desc });
+      const result = await suggestCategories({ 
+        description: desc,
+        existingCategories: book?.customCategories 
+      });
       setSuggestions(result.suggestedCategories);
     } catch (e) {
       console.error(e);
@@ -70,7 +73,7 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
     setCategory(newCategoryName.trim());
     setNewCategoryName("");
     setIsAddingNewCategory(false);
-    toast({ title: "Category Added", description: `"${newCategoryName}" has been added to this book.` });
+    toast({ title: "Kategori Ditambah", description: `"${newCategoryName}" telah ditambah ke dalam buku ini.` });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -86,10 +89,10 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
         category,
         description: description.trim() || undefined
       });
-      toast({ title: "Transaction Added", description: `Successfully recorded ${type === 'in' ? 'income' : 'expense'}.` });
+      toast({ title: "Transaksi Berjaya", description: `Berjaya merekodkan ${type === 'in' ? 'pendapatan' : 'perbelanjaan'}.` });
       onClose();
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      toast({ variant: "destructive", title: "Ralat", description: error.message });
     } finally {
       setLoading(false);
     }
@@ -100,21 +103,21 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
       <DialogContent className="rounded-t-[2.5rem] sm:rounded-[2.5rem] max-w-[100vw] sm:max-w-md fixed bottom-0 top-auto translate-y-0 sm:top-[50%] sm:bottom-auto sm:translate-y-[-50%] p-8 border-none shadow-2xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-black text-center mb-4">
-            Record {type === 'in' ? 'Cash In' : 'Cash Out'}
+            Rekod {type === 'in' ? 'Wang Masuk' : 'Wang Keluar'}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Amount</Label>
+            <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Jumlah</Label>
             <div className="relative">
-              <span className="absolute left-4 top-[50%] translate-y-[-50%] font-bold text-2xl text-primary">$</span>
+              <span className="absolute left-4 top-[50%] translate-y-[-50%] font-bold text-2xl text-primary">RM</span>
               <Input 
                 type="number" 
                 placeholder="0.00" 
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 required
-                className="pl-10 h-16 rounded-2xl text-2xl font-black focus:ring-primary border-muted"
+                className="pl-14 h-16 rounded-2xl text-2xl font-black focus:ring-primary border-muted"
                 autoFocus
               />
             </div>
@@ -122,24 +125,24 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Method</Label>
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Kaedah</Label>
               <Select value={method} onValueChange={(v: any) => setMethod(v)}>
                 <SelectTrigger className="h-12 rounded-xl">
-                  <SelectValue placeholder="Select Method" />
+                  <SelectValue placeholder="Pilih Kaedah" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
-                  <SelectItem value="Cash">Cash</SelectItem>
+                  <SelectItem value="Cash">Tunai</SelectItem>
                   <SelectItem value="Online">Online</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Category</Label>
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Kategori</Label>
               {!isAddingNewCategory ? (
                 <div className="flex gap-2">
                   <Select value={category} onValueChange={(v) => setCategory(v)}>
                     <SelectTrigger className="h-12 rounded-xl flex-1">
-                      <SelectValue placeholder="Select" />
+                      <SelectValue placeholder="Pilih" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
                       {book?.customCategories?.map((cat) => (
@@ -160,7 +163,7 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
               ) : (
                 <div className="flex gap-2">
                   <Input 
-                    placeholder="New..." 
+                    placeholder="Baru..." 
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                     className="h-12 rounded-xl flex-1"
@@ -188,9 +191,9 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Description</Label>
+            <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Catatan</Label>
             <Input 
-              placeholder="What is this for?" 
+              placeholder="Untuk apa?" 
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               onBlur={() => fetchSuggestions(description)}
@@ -202,7 +205,7 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
             <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10">
               <div className="flex items-center gap-1.5 mb-2 text-primary">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span className="text-[10px] uppercase font-black tracking-widest">Smart Suggestions</span>
+                <span className="text-[10px] uppercase font-black tracking-widest">Cadangan Pintar AI</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {suggestions.map((s) => (
@@ -227,7 +230,7 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
           {isSuggesting && (
              <div className="flex items-center justify-center gap-2 py-2 text-primary">
                <Loader2 className="w-4 h-4 animate-spin" />
-               <span className="text-xs font-medium">Analyzing description...</span>
+               <span className="text-xs font-medium">Menganalisis catatan...</span>
              </div>
           )}
 
@@ -237,7 +240,7 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
               className={`w-full h-14 rounded-2xl text-lg font-bold shadow-lg ${type === 'in' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-rose-500 hover:bg-rose-600'}`}
               disabled={loading || !category}
             >
-              {loading ? "Processing..." : "Save Transaction"}
+              {loading ? "Memproses..." : "Simpan Transaksi"}
             </Button>
           </DialogFooter>
         </form>
