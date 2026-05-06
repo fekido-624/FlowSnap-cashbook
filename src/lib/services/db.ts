@@ -355,11 +355,14 @@ export const toggleChecklistItem = async (userId: string, checklistId: string, i
   const newPaidStatus = !currentStatus;
 
   if (newPaidStatus && checklist.bookId) {
+    // Tambah kategori checklist ke buku akaun secara automatik jika belum ada
+    await addCategoryToBook(checklist.bookId, checklist.name);
+
     const tx = await addTransaction(userId, checklist.bookId, {
       type: 'out',
       amount: item.amount,
       method: 'Online',
-      category: 'Checklist',
+      category: checklist.name, // Gunakan nama checklist sebagai kategori
       description: `Bayaran: ${item.name} (${monthKey})`
     });
     item.payments[monthKey] = { isPaid: true, transactionId: tx.id };
