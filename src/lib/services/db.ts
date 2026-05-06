@@ -378,36 +378,18 @@ export const deleteChecklistItem = async (checklistId: string, itemId: string) =
   if (cIdx === -1) return;
 
   const checklist = checklists[cIdx];
-  const item = checklist.items.find(i => i.id === itemId);
   
-  if (item?.payments && checklist.bookId) {
-    for (const key in item.payments) {
-      if (item.payments[key].transactionId) {
-        await deleteTransaction(checklist.bookId, item.payments[key].transactionId!);
-      }
-    }
-  }
-
+  // Hanya buang item daripada senarai template. 
+  // Rekod transaksi dalam Buku Akaun tidak akan dipadam untuk keselamatan sejarah data.
   checklist.items = checklist.items.filter(i => i.id !== itemId);
   setLocalChecklists(checklists);
 };
 
 export const deleteChecklist = async (id: string) => {
   const checklists = getLocalChecklists();
-  const checklist = checklists.find(c => c.id === id);
   
-  if (checklist) {
-    for (const item of checklist.items) {
-      if (item.payments && checklist.bookId) {
-        for (const key in item.payments) {
-          if (item.payments[key].transactionId) {
-            await deleteTransaction(checklist.bookId, item.payments[key].transactionId!);
-          }
-        }
-      }
-    }
-  }
-
+  // Hanya buang folder checklist. 
+  // Rekod transaksi lama dalam Buku Akaun kekal sebagai sejarah.
   const filtered = checklists.filter(c => c.id !== id);
   setLocalChecklists(filtered);
 };
