@@ -11,6 +11,8 @@ import {
   toggleChecklistItem, 
   deleteChecklistItem, 
   deleteChecklist,
+  excludeItemFromMonth,
+  restoreItemForMonth,
   Checklist,
   ChecklistItem
 } from "@/lib/services/db";
@@ -38,7 +40,9 @@ import {
   ChevronLeft,
   ChevronRight,
   History,
-  AlertTriangle
+  AlertTriangle,
+  RotateCcw,
+  EyeOff
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format, addMonths, startOfMonth } from "date-fns";
@@ -55,6 +59,7 @@ export default function ChecklistDetailPage() {
   const [editAmount, setEditAmount] = useState("");
   const [api, setApi] = useState<CarouselApi>();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [showHidden, setShowHidden] = useState(false);
   
   const router = useRouter();
   const { toast } = useToast();
@@ -90,32 +95,42 @@ export default function ChecklistDetailPage() {
     });
   }, [api]);
 
+  const filteredItems = useMemo(() => {
+    if (!checklist) return [];
+    const monthKey = months[currentSlide].key;
+    return checklist.items.filter(item => {
+      // Filter mengikut tarikh aktif
+      const isStillValid = !item.validUntil || item.validUntil >= monthKey;
+      // Filter mengikut pengecualian bulanan (Hanya jika tidak tunjuk hidden)
+      const isNotExcluded = !item.excludedMonths?.includes(monthKey);
+      
+      return isStillValid && isNotExcluded;
+    });
+  }, [checklist, currentSlide, months]);
+
+  const excludedItems = useMemo(() => {
+    if (!checklist) return [];
+    const monthKey = months[currentSlide].key;
+    return checklist.items.filter(item => {
+      const isStillValid = !item.validUntil || item.validUntil >= monthKey;
+      const isExcluded = item.excludedMonths?.includes(monthKey);
+      return isStillValid && isExcluded;
+    });
+  }, [checklist, currentSlide, months]);
+
   const stats = useMemo(() => {
     if (!checklist) return { total: 0, paid: 0, pending: 0 };
     const monthKey = months[currentSlide].key;
     
-    const validItems = checklist.items.filter(item => {
-      if (!item.validUntil) return true;
-      return item.validUntil >= monthKey;
-    });
-
-    return validItems.reduce((acc, item) => {
+    // Kira statistik hanya untuk item yang tidak dikecualikan
+    return filteredItems.reduce((acc, item) => {
       acc.total += item.amount;
       const isPaid = item.payments?.[monthKey]?.isPaid || false;
       if (isPaid) acc.paid += item.amount;
       else acc.pending += item.amount;
       return acc;
     }, { total: 0, paid: 0, pending: 0 });
-  }, [checklist, currentSlide, months]);
-
-  const filteredItems = useMemo(() => {
-    if (!checklist) return [];
-    const monthKey = months[currentSlide].key;
-    return checklist.items.filter(item => {
-      if (!item.validUntil) return true;
-      return item.validUntil >= monthKey;
-    });
-  }, [checklist, currentSlide, months]);
+  }, [filteredItems, currentSlide, months]);
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,21 +157,23 @@ export default function ChecklistDetailPage() {
     }
   };
 
-  const handleDeleteItem = async (itemId: string, itemName: string) => {
-    const hasHistory = checklist?.items.find(i => i.id === itemId)?.payments;
-    const historyCount = hasHistory ? Object.keys(hasHistory).length : 0;
-
-    const msg = historyCount > 0 
-      ? `Item "${itemName}" mempunyai ${historyCount} rekod bayaran sebelum ini. Memadam item ini akan turut memadam SEMUA rekod transaksinya dalam Buku Akaun. Teruskan?`
-      : `Adakah anda pasti mahu memadam "${itemName}"?`;
-
-    if (confirm(msg)) {
+  const handleMonthlyDelete = async (itemId: string, itemName: string) => {
+    if (confirm(`Padam "${itemName}" untuk bulan ${months[currentSlide].label} sahaja? Jika sudah dibayar, baki dalam Buku Akaun akan dipulihkan.`)) {
       try {
-        await deleteChecklistItem(id, itemId);
-        toast({ title: "Dipadam", description: "Item telah dibuang daripada senarai." });
+        await excludeItemFromMonth(id, itemId, currentMonthKey);
+        toast({ title: "Dipadam (Bulan Ini)", description: `Item disembunyikan untuk bulan ${months[currentSlide].label}.` });
       } catch (e: any) {
         toast({ variant: "destructive", title: "Ralat", description: e.message });
       }
+    }
+  };
+
+  const handleRestore = async (itemId: string) => {
+    try {
+      await restoreItemForMonth(id, itemId, currentMonthKey);
+      toast({ title: "Dipulihkan", description: "Item kini muncul semula dalam senarai bulan ini." });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Ralat", description: e.message });
     }
   };
 
@@ -180,7 +197,7 @@ export default function ChecklistDetailPage() {
           variant="ghost" 
           size="icon" 
           onClick={() => {
-            if (confirm("Padam keseluruhan checklist ini? Semua sejarah bayaran dalam Buku Akaun juga akan terpadam.")) {
+            if (confirm("Padam keseluruhan checklist ini? Rekod lama dalam Buku Akaun akan tetap kekal.")) {
               deleteChecklist(id);
               router.push("/checklists");
             }
@@ -207,16 +224,16 @@ export default function ChecklistDetailPage() {
 
         <Card className="bg-primary text-white border-none shadow-xl rounded-[2.5rem] p-6">
           <div className="flex flex-col items-center text-center mb-6">
-            <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-1">Status Bayaran: {months[currentSlide].label}</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-1">Komitmen: {months[currentSlide].label}</span>
             <span className="text-4xl font-black">RM{stats.total.toLocaleString()}</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-white/10 rounded-2xl p-3 flex flex-col items-center">
-              <span className="text-[8px] font-bold uppercase opacity-60">Sudah Bayar</span>
+              <span className="text-[8px] font-bold uppercase opacity-60">Selesai</span>
               <span className="font-bold text-emerald-300">RM{stats.paid.toLocaleString()}</span>
             </div>
             <div className="bg-white/10 rounded-2xl p-3 flex flex-col items-center">
-              <span className="text-[8px] font-bold uppercase opacity-60">Belum Bayar</span>
+              <span className="text-[8px] font-bold uppercase opacity-60">Tunggakan</span>
               <span className="font-bold text-rose-300">RM{stats.pending.toLocaleString()}</span>
             </div>
           </div>
@@ -230,7 +247,7 @@ export default function ChecklistDetailPage() {
                   <div className="flex items-center justify-between">
                     <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                       <ReceiptText className="w-4 h-4 text-primary" />
-                      SENARAI KOMITMEN
+                      SENARAI BULANAN
                     </h2>
                     <span className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded-full">{filteredItems.length} ITEM</span>
                   </div>
@@ -238,7 +255,7 @@ export default function ChecklistDetailPage() {
                   <div className="space-y-3 min-h-[200px]">
                     {filteredItems.length === 0 ? (
                       <div className="text-center py-10 opacity-30 text-xs italic bg-muted/20 rounded-2xl">
-                        Tiada komitmen untuk bulan ini.
+                        Tiada komitmen untuk dipaparkan.
                       </div>
                     ) : (
                       filteredItems.map((item) => (
@@ -253,11 +270,37 @@ export default function ChecklistDetailPage() {
                             setEditName(item.name);
                             setEditAmount(item.amount.toString());
                           }}
-                          onDelete={() => handleDeleteItem(item.id, item.name)}
+                          onDelete={() => handleMonthlyDelete(item.id, item.name)}
                         />
                       ))
                     )}
                   </div>
+
+                  {excludedItems.length > 0 && (
+                    <div className="mt-8 space-y-4 border-t pt-6 border-dashed">
+                       <Button 
+                         variant="ghost" 
+                         size="sm" 
+                         className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+                         onClick={() => setShowHidden(!showHidden)}
+                       >
+                         {showHidden ? 'Sembunyi' : 'Lihat'} {excludedItems.length} Item Dipadam Bulan Ini
+                       </Button>
+                       
+                       {showHidden && (
+                         <div className="space-y-2 opacity-60">
+                            {excludedItems.map(item => (
+                              <div key={item.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
+                                <span className="text-xs font-medium line-through">{item.name}</span>
+                                <Button variant="ghost" size="sm" onClick={() => handleRestore(item.id)} className="h-7 px-2 text-[10px] font-bold flex gap-1">
+                                  <RotateCcw className="w-3 h-3" /> Pulihkan
+                                </Button>
+                              </div>
+                            ))}
+                         </div>
+                       )}
+                    </div>
+                  )}
                 </div>
               </CarouselItem>
             ))}
@@ -269,7 +312,7 @@ export default function ChecklistDetailPage() {
             <div className="space-y-1">
               <Label className="text-[10px] font-bold ml-1 text-muted-foreground uppercase tracking-widest">Nama Item</Label>
               <Input 
-                placeholder="Bil Api, Sewa..."
+                placeholder="Bil, Sewa..."
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
                 className="h-10 rounded-xl border-none shadow-sm"
@@ -294,12 +337,9 @@ export default function ChecklistDetailPage() {
               onChange={(e) => setNewItemValidUntil(e.target.value)}
               className="h-10 rounded-xl border-none shadow-sm"
             />
-            <p className="text-[8px] text-muted-foreground px-1 italic">
-              Gunakan ini untuk "menghentikan" komitmen pada masa depan tanpa memadam rekod lama.
-            </p>
           </div>
           <Button type="submit" className="w-full h-10 rounded-xl font-bold flex gap-2">
-            <Plus className="w-4 h-4" /> Tambah Item Jadual
+            <Plus className="w-4 h-4" /> Tambah Item
           </Button>
         </form>
       </div>
@@ -346,7 +386,6 @@ function ItemRow({
   const isPaid = item.payments?.[monthKey]?.isPaid || false;
   const transactionId = item.payments?.[monthKey]?.transactionId;
 
-  // Kira sejarah bayaran terkumpul
   const historyStats = useMemo(() => {
     const paidMonths = Object.values(item.payments || {}).filter(p => p.isPaid);
     const count = paidMonths.length;
@@ -362,10 +401,7 @@ function ItemRow({
         className="w-6 h-6 rounded-lg border-2"
       />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <p className={`font-bold text-sm truncate ${isPaid ? 'line-through text-muted-foreground' : ''}`}>{item.name}</p>
-        </div>
-        
+        <p className={`font-bold text-sm truncate ${isPaid ? 'line-through text-muted-foreground' : ''}`}>{item.name}</p>
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2 text-[10px]">
             <span className="font-black text-primary">RM{item.amount.toLocaleString()}</span>
@@ -375,11 +411,10 @@ function ItemRow({
               </span>
             )}
           </div>
-          
           {historyStats.count > 0 && (
             <div className="flex items-center gap-1 text-[9px] text-muted-foreground bg-primary/5 w-fit px-2 py-0.5 rounded-lg border border-primary/5">
               <History className="w-2.5 h-2.5 text-primary/50" />
-              <span>Terkumpul: <b className="text-foreground">RM{historyStats.total.toLocaleString()}</b> ({historyStats.count} bln)</span>
+              <span>Terkumpul: <b className="text-foreground">RM{historyStats.total.toLocaleString()}</b></span>
             </div>
           )}
         </div>
@@ -393,8 +428,9 @@ function ItemRow({
           size="icon" 
           onClick={onDelete}
           className="rounded-full h-8 w-8 text-muted-foreground hover:text-rose-500 hover:bg-rose-50"
+          title="Padam untuk bulan ini"
         >
-          <Trash2 className="w-4 h-4" />
+          <EyeOff className="w-4 h-4" />
         </Button>
       </div>
     </div>

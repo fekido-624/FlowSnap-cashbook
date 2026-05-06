@@ -34,9 +34,9 @@ export interface ChecklistItem {
   name: string;
   amount: number;
   isFixed?: boolean;
-  // Menyimpan status bayaran mengikut bulan (e.g. "2024-05": {isPaid: true})
   payments: { [monthKey: string]: MonthlyPayment };
   validUntil?: string; // Format "YYYY-MM"
+  excludedMonths?: string[]; // Bulan di mana item ini dipadam/disembunyikan
 }
 
 export interface Checklist {
@@ -308,7 +308,8 @@ export const addChecklistItem = async (checklistId: string, name: string, amount
     name,
     amount,
     payments: {},
-    validUntil
+    validUntil,
+    excludedMonths: []
   };
 
   checklists[idx].items.push(newItem);
@@ -372,24 +373,60 @@ export const toggleChecklistItem = async (userId: string, checklistId: string, i
   setLocalChecklists(checklists);
 };
 
+export const excludeItemFromMonth = async (checklistId: string, itemId: string, monthKey: string) => {
+  const checklists = getLocalChecklists();
+  const cIdx = checklists.findIndex(c => c.id === checklistId);
+  if (cIdx === -1) return;
+
+  const checklist = checklists[cIdx];
+  const iIdx = checklist.items.findIndex(i => i.id === itemId);
+  if (iIdx === -1) return;
+
+  const item = checklist.items[iIdx];
+  
+  // Jika sudah dibayar, pulihkan baki (padam transaksi)
+  if (item.payments[monthKey]?.isPaid && item.payments[monthKey].transactionId && checklist.bookId) {
+    await deleteTransaction(checklist.bookId, item.payments[monthKey].transactionId!);
+    item.payments[monthKey] = { isPaid: false };
+  }
+
+  if (!item.excludedMonths) item.excludedMonths = [];
+  if (!item.excludedMonths.includes(monthKey)) {
+    item.excludedMonths.push(monthKey);
+  }
+  
+  setLocalChecklists(checklists);
+};
+
+export const restoreItemForMonth = async (checklistId: string, itemId: string, monthKey: string) => {
+  const checklists = getLocalChecklists();
+  const cIdx = checklists.findIndex(c => c.id === checklistId);
+  if (cIdx === -1) return;
+
+  const checklist = checklists[cIdx];
+  const iIdx = checklist.items.findIndex(i => i.id === itemId);
+  if (iIdx === -1) return;
+
+  const item = checklist.items[iIdx];
+  if (item.excludedMonths) {
+    item.excludedMonths = item.excludedMonths.filter(m => m !== monthKey);
+  }
+  
+  setLocalChecklists(checklists);
+};
+
 export const deleteChecklistItem = async (checklistId: string, itemId: string) => {
   const checklists = getLocalChecklists();
   const cIdx = checklists.findIndex(c => c.id === checklistId);
   if (cIdx === -1) return;
 
   const checklist = checklists[cIdx];
-  
-  // Hanya buang item daripada senarai template. 
-  // Rekod transaksi dalam Buku Akaun tidak akan dipadam untuk keselamatan sejarah data.
   checklist.items = checklist.items.filter(i => i.id !== itemId);
   setLocalChecklists(checklists);
 };
 
 export const deleteChecklist = async (id: string) => {
   const checklists = getLocalChecklists();
-  
-  // Hanya buang folder checklist. 
-  // Rekod transaksi lama dalam Buku Akaun kekal sebagai sejarah.
   const filtered = checklists.filter(c => c.id !== id);
   setLocalChecklists(filtered);
 };
