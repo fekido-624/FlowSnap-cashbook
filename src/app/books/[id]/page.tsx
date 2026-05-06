@@ -65,6 +65,20 @@ export default function BookDetailPage() {
     });
   }, [transactions, filter]);
 
+  // Kira statistik berdasarkan transaksi yang telah ditapis
+  const filteredStats = useMemo(() => {
+    return filteredTransactions.reduce((acc, tx) => {
+      if (tx.type === 'in') {
+        acc.totalIn += tx.amount;
+        acc.net += tx.amount;
+      } else {
+        acc.totalOut += tx.amount;
+        acc.net -= tx.amount;
+      }
+      return acc;
+    }, { totalIn: 0, totalOut: 0, net: 0 });
+  }, [filteredTransactions]);
+
   const handleEditTx = (tx: Transaction) => {
     setEditingTx(tx);
     setTxType(tx.type);
@@ -101,6 +115,8 @@ export default function BookDetailPage() {
     </div>
   );
 
+  const isFilterActive = filter.method !== 'All' || filter.category !== 'All';
+
   return (
     <div className="max-w-md mx-auto min-h-svh flex flex-col bg-background pb-32">
       <header className="p-6 pb-2 sticky top-0 bg-background/80 backdrop-blur-lg z-10 flex items-center justify-between">
@@ -114,19 +130,26 @@ export default function BookDetailPage() {
           <Button variant="ghost" size="icon" className="rounded-full text-rose-500 hover:text-rose-600 hover:bg-rose-50" onClick={handleDeleteBook}>
             <Trash2 className="w-5 h-5" />
           </Button>
-          <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setIsFilterOpen(true)}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={`rounded-full ${isFilterActive ? 'text-primary bg-primary/10' : ''}`} 
+            onClick={() => setIsFilterOpen(true)}
+          >
             <Filter className="w-5 h-5" />
           </Button>
         </div>
       </header>
 
       <div className="px-6 space-y-6 overflow-y-auto mobile-scroll-container">
-        {/* Balance Card */}
+        {/* Balance Card - Now reflects filtered stats */}
         <Card className="bg-primary text-white border-none shadow-xl rounded-[2.5rem] p-8">
           <div className="flex flex-col items-center gap-1 text-center mb-8">
-            <span className="text-sm font-medium opacity-80 uppercase tracking-widest">Baki Bersih</span>
+            <span className="text-sm font-medium opacity-80 uppercase tracking-widest">
+              {isFilterActive ? 'Baki (Ditapis)' : 'Baki Bersih'}
+            </span>
             <span className="text-5xl font-black tracking-tighter">
-              RM{book.netBalance.toLocaleString()}
+              RM{filteredStats.net.toLocaleString()}
             </span>
           </div>
           
@@ -136,14 +159,14 @@ export default function BookDetailPage() {
                 <div className="w-2 h-2 rounded-full bg-emerald-400" />
                 <span className="text-[10px] uppercase font-bold opacity-70">Masuk</span>
               </div>
-              <span className="text-lg font-bold truncate">RM{book.totalCashIn.toLocaleString()}</span>
+              <span className="text-lg font-bold truncate">RM{filteredStats.totalIn.toLocaleString()}</span>
             </div>
             <div className="bg-white/10 rounded-3xl p-4 flex flex-col items-center">
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-2 h-2 rounded-full bg-rose-400" />
                 <span className="text-[10px] uppercase font-bold opacity-70">Keluar</span>
               </div>
-              <span className="text-lg font-bold truncate">RM{book.totalCashOut.toLocaleString()}</span>
+              <span className="text-lg font-bold truncate">RM{filteredStats.totalOut.toLocaleString()}</span>
             </div>
           </div>
         </Card>
@@ -153,7 +176,7 @@ export default function BookDetailPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold flex items-center gap-2">
               <History className="w-5 h-5 text-primary" />
-              Transaksi Terkini
+              {isFilterActive ? 'Hasil Tapisan' : 'Transaksi Terkini'}
             </h2>
             <span className="text-xs text-muted-foreground font-medium">{filteredTransactions.length} item</span>
           </div>
