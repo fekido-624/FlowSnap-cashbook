@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { subscribeToBooks, createBook, Book } from "@/lib/services/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Plus, BookOpen, LogOut, ChevronRight, Wallet } from "lucide-react";
+import { Plus, BookOpen, LogOut, ChevronRight, Wallet, User } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,12 +52,12 @@ export default function BooksPage() {
   return (
     <div className="max-w-md mx-auto min-h-svh pb-20 pt-6 px-6 flex flex-col gap-6">
       <header className="flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <div className="bg-primary p-2 rounded-lg">
-            <BookOpen className="w-5 h-5 text-white" />
+        <Link href="/profile" className="flex items-center gap-2 group transition-transform active:scale-95">
+          <div className="bg-primary p-2 rounded-lg group-hover:shadow-md transition-all">
+            <User className="w-5 h-5 text-white" />
           </div>
           <h1 className="text-xl font-bold text-primary">BukuAkaun</h1>
-        </div>
+        </Link>
         <Button variant="ghost" size="icon" onClick={logout} className="rounded-full">
           <LogOut className="w-5 h-5" />
         </Button>
@@ -126,17 +126,17 @@ export default function BooksPage() {
                       <div className="flex flex-col">
                         <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Balance</span>
                         <span className={`text-lg font-bold ${book.netBalance >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                          ${book.netBalance.toLocaleString()}
+                          RM{book.netBalance.toLocaleString()}
                         </span>
                       </div>
                       <div className="flex gap-4 text-right">
                         <div className="flex flex-col">
                           <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">In</span>
-                          <span className="text-xs font-semibold text-emerald-600">+${book.totalCashIn.toLocaleString()}</span>
+                          <span className="text-xs font-semibold text-emerald-600">+RM{book.totalCashIn.toLocaleString()}</span>
                         </div>
                         <div className="flex flex-col">
                           <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Out</span>
-                          <span className="text-xs font-semibold text-rose-600">-${book.totalCashOut.toLocaleString()}</span>
+                          <span className="text-xs font-semibold text-rose-600">-RM{book.totalCashOut.toLocaleString()}</span>
                         </div>
                       </div>
                     </div>
