@@ -10,8 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { addTransaction, updateTransaction, deleteTransaction, addCategoryToBook, subscribeToBook, Book, Transaction } from "@/lib/services/db";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, X, Trash2, Sparkles, Loader2 } from "lucide-react";
-import { suggestCategories } from "@/ai/flows/smart-category-suggestion";
+import { Plus, X, Trash2 } from "lucide-react";
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -30,7 +29,6 @@ export function TransactionModal({ isOpen, onClose, type: initialType, bookId, e
   const [description, setDescription] = useState("");
   const [type, setType] = useState<'in' | 'out'>(initialType);
   const [loading, setLoading] = useState(false);
-  const [isSuggesting, setIsSuggesting] = useState(false);
   const [book, setBook] = useState<Book | null>(null);
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -65,29 +63,6 @@ export function TransactionModal({ isOpen, onClose, type: initialType, bookId, e
       setNewCategoryName("");
     }
   }, [isOpen, editingTransaction, initialType]);
-
-  const handleSuggest = async () => {
-    if (!description.trim()) return;
-    setIsSuggesting(true);
-    try {
-      const result = await suggestCategories({
-        description,
-        existingCategories: book?.customCategories || []
-      });
-      if (result.suggestedCategories.length > 0) {
-        const suggested = result.suggestedCategories[0];
-        setCategory(suggested);
-        toast({
-          title: "Cadangan Pintar",
-          description: `Kategori dilaraskan kepada "${suggested}" berdasarkan catatan anda.`,
-        });
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSuggesting(false);
-    }
-  };
 
   const handleAddNewCategory = async () => {
     if (!newCategoryName.trim()) return;
@@ -237,25 +212,12 @@ export function TransactionModal({ isOpen, onClose, type: initialType, bookId, e
 
           <div className="space-y-2">
             <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Catatan</Label>
-            <div className="flex gap-2">
-              <Input 
-                placeholder="Untuk apa?" 
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                onBlur={() => !editingTransaction && handleSuggest()}
-                className="h-12 rounded-xl flex-1"
-              />
-              <Button 
-                type="button" 
-                variant="ghost" 
-                size="icon" 
-                className={`h-12 w-12 rounded-xl ${isSuggesting ? 'animate-pulse text-primary' : 'text-muted-foreground'}`}
-                onClick={handleSuggest}
-                disabled={isSuggesting || !description}
-              >
-                {isSuggesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              </Button>
-            </div>
+            <Input 
+              placeholder="Untuk apa?" 
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="h-12 rounded-xl w-full"
+            />
           </div>
 
           <DialogFooter className="pt-4 flex flex-col gap-3">
