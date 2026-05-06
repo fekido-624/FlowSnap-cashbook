@@ -63,13 +63,12 @@ Apabila pengguna menanda (*tick*) item dalam Checklist yang telah dipautkan ke s
 - Tab Analisis mengira pecahan perbelanjaan secara dinamik menggunakan `useMemo`.
 - Pengiraan menggunakan pembulatan 2 tempat perpuluhan untuk memastikan ketepatan jumlah (Sum of Categories == Total Expense).
 
-## 5. Aliran Fail (File Structure)
-- `src/lib/services/db.ts`: Pusat logik CRUD dan simulasi pangkalan data.
-- `src/lib/contexts/auth-context.tsx`: Pengurusan sesi pengguna (Mock Auth).
-- `src/app/books/[id]/page.tsx`: Halaman utama pengurusan transaksi dan analisis.
-- `src/app/checklists/[id]/page.tsx`: Logik pengurusan komitmen bulanan dan swipe navigasi.
-- `src/components/TransactionModal.tsx`: Borang kemasukan data yang dikongsi antara Buku dan Checklist.
-
-## 6. Polisi Pemadaman
+## 5. Polisi Pemadaman
 1. **Padam Buku**: Memutuskan pautan (*un-link*) semua checklist berkaitan dan menukar semua status item kepada *un-paid*.
 2. **Padam Item Checklist**: Sejarah transaksi dalam Buku Akaun **kekal selamat** (decoupled) untuk mengelakkan kehilangan rekod kewangan lampau.
+
+## 6. Visi Masa Hadapan: Strategi Responsive UI
+Untuk menyokong paparan Desktop (Web) yang lebih luas:
+- **Layout**: Gunakan `md:hidden` untuk menyembunyikan navigasi bawah pada skrin besar dan `md:flex` untuk memaparkan sidebar tetap.
+- **Grid System**: Tukar `max-w-md` kepada `max-w-screen-xl` dan gunakan grid (cth: `grid-cols-1 md:grid-cols-3`) untuk memaparkan Ringkasan Baki, Senarai Transaksi, dan Analisis secara serentak dalam satu skrin.
+- **Shared Logic**: Semua fungsi dalam `src/lib/services/db.ts` boleh dikongsi tanpa perubahan antara UI Mobile dan Desktop.
