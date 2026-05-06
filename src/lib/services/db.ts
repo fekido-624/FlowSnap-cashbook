@@ -1,3 +1,4 @@
+
 // Implementasi Mock DB menggunakan localStorage
 export interface Book {
   id: string;
@@ -23,13 +24,19 @@ export interface Transaction {
   runningBalance: number;
 }
 
+export interface MonthlyPayment {
+  isPaid: boolean;
+  transactionId?: string;
+}
+
 export interface ChecklistItem {
   id: string;
   name: string;
   amount: number;
-  isPaid: boolean;
-  isFixed?: boolean; // Item tetap yang berulang setiap bulan
-  transactionId?: string;
+  isFixed?: boolean;
+  // Menyimpan status bayaran mengikut bulan (e.g. "2024-05": {isPaid: true})
+  payments: { [monthKey: string]: MonthlyPayment };
+  validUntil?: string; // Format "YYYY-MM"
 }
 
 export interface Checklist {
@@ -291,7 +298,7 @@ export const subscribeToChecklist = (id: string, callback: (data: Checklist | nu
   return () => clearInterval(interval);
 };
 
-export const addChecklistItem = async (checklistId: string, name: string, amount: number, isFixed = false) => {
+export const addChecklistItem = async (checklistId: string, name: string, amount: number, validUntil?: string) => {
   const checklists = getLocalChecklists();
   const idx = checklists.findIndex(c => c.id === checklistId);
   if (idx === -1) return;
@@ -300,28 +307,15 @@ export const addChecklistItem = async (checklistId: string, name: string, amount
     id: Math.random().toString(36).substr(2, 9),
     name,
     amount,
-    isPaid: false,
-    isFixed
+    payments: {},
+    validUntil
   };
 
   checklists[idx].items.push(newItem);
   setLocalChecklists(checklists);
 };
 
-export const toggleChecklistItemFixed = async (checklistId: string, itemId: string) => {
-  const checklists = getLocalChecklists();
-  const cIdx = checklists.findIndex(c => c.id === checklistId);
-  if (cIdx === -1) return;
-
-  const checklist = checklists[cIdx];
-  const iIdx = checklist.items.findIndex(i => i.id === itemId);
-  if (iIdx === -1) return;
-
-  checklist.items[iIdx].isFixed = !checklist.items[iIdx].isFixed;
-  setLocalChecklists(checklists);
-};
-
-export const updateChecklistItem = async (userId: string, checklistId: string, itemId: string, name: string, amount: number) => {
+export const updateChecklistItem = async (userId: string, checklistId: string, itemId: string, name: string, amount: number, monthKey?: string) => {
   const checklists = getLocalChecklists();
   const cIdx = checklists.findIndex(c => c.id === checklistId);
   if (cIdx === -1) return;
@@ -332,10 +326,11 @@ export const updateChecklistItem = async (userId: string, checklistId: string, i
 
   const item = checklist.items[iIdx];
   
-  if (item.isPaid && item.transactionId && checklist.bookId) {
-    await updateTransaction(userId, checklist.bookId, item.transactionId, {
+  // Jika item sudah dibayar pada bulan tertentu, kemas kini transaksinya
+  if (monthKey && item.payments[monthKey]?.isPaid && item.payments[monthKey].transactionId && checklist.bookId) {
+    await updateTransaction(userId, checklist.bookId, item.payments[monthKey].transactionId!, {
       amount: amount,
-      description: `Bayaran: ${name} (${checklist.name})`
+      description: `Bayaran: ${name} (${monthKey})`
     });
   }
 
@@ -344,7 +339,7 @@ export const updateChecklistItem = async (userId: string, checklistId: string, i
   setLocalChecklists(checklists);
 };
 
-export const toggleChecklistItem = async (userId: string, checklistId: string, itemId: string) => {
+export const toggleChecklistItem = async (userId: string, checklistId: string, itemId: string, monthKey: string) => {
   const checklists = getLocalChecklists();
   const cIdx = checklists.findIndex(c => c.id === checklistId);
   if (cIdx === -1) return;
@@ -354,7 +349,10 @@ export const toggleChecklistItem = async (userId: string, checklistId: string, i
   if (iIdx === -1) return;
 
   const item = checklist.items[iIdx];
-  const newPaidStatus = !item.isPaid;
+  if (!item.payments) item.payments = {};
+  
+  const currentStatus = item.payments[monthKey]?.isPaid || false;
+  const newPaidStatus = !currentStatus;
 
   if (newPaidStatus && checklist.bookId) {
     const tx = await addTransaction(userId, checklist.bookId, {
@@ -362,37 +360,16 @@ export const toggleChecklistItem = async (userId: string, checklistId: string, i
       amount: item.amount,
       method: 'Online',
       category: 'Checklist',
-      description: `Bayaran: ${item.name} (${checklist.name})`
+      description: `Bayaran: ${item.name} (${monthKey})`
     });
-    item.transactionId = tx.id;
-  } else if (!newPaidStatus && item.transactionId && checklist.bookId) {
-    await deleteTransaction(checklist.bookId, item.transactionId);
-    item.transactionId = undefined;
+    item.payments[monthKey] = { isPaid: true, transactionId: tx.id };
+  } else if (!newPaidStatus && item.payments[monthKey]?.transactionId && checklist.bookId) {
+    await deleteTransaction(checklist.bookId, item.payments[monthKey].transactionId!);
+    item.payments[monthKey] = { isPaid: false };
+  } else {
+    item.payments[monthKey] = { isPaid: newPaidStatus };
   }
 
-  item.isPaid = newPaidStatus;
-  setLocalChecklists(checklists);
-};
-
-export const resetChecklistMonthly = async (checklistId: string) => {
-  const checklists = getLocalChecklists();
-  const cIdx = checklists.findIndex(c => c.id === checklistId);
-  if (cIdx === -1) return;
-
-  const checklist = checklists[cIdx];
-  
-  // Padam transaksi untuk semua item (fixed & normal) yang sdh dibayar
-  for (const item of checklist.items) {
-    if (item.isPaid && item.transactionId && checklist.bookId) {
-      await deleteTransaction(checklist.bookId, item.transactionId);
-    }
-  }
-
-  // Buang item normal, biarkan item fixed tapi reset status bayar
-  checklist.items = checklist.items
-    .filter(item => item.isFixed)
-    .map(item => ({ ...item, isPaid: false, transactionId: undefined }));
-    
   setLocalChecklists(checklists);
 };
 
@@ -404,8 +381,12 @@ export const deleteChecklistItem = async (checklistId: string, itemId: string) =
   const checklist = checklists[cIdx];
   const item = checklist.items.find(i => i.id === itemId);
   
-  if (item?.transactionId && checklist.bookId) {
-    await deleteTransaction(checklist.bookId, item.transactionId);
+  if (item?.payments && checklist.bookId) {
+    for (const key in item.payments) {
+      if (item.payments[key].transactionId) {
+        await deleteTransaction(checklist.bookId, item.payments[key].transactionId!);
+      }
+    }
   }
 
   checklist.items = checklist.items.filter(i => i.id !== itemId);
@@ -418,8 +399,12 @@ export const deleteChecklist = async (id: string) => {
   
   if (checklist) {
     for (const item of checklist.items) {
-      if (item.transactionId && checklist.bookId) {
-        await deleteTransaction(checklist.bookId, item.transactionId);
+      if (item.payments && checklist.bookId) {
+        for (const key in item.payments) {
+          if (item.payments[key].transactionId) {
+            await deleteTransaction(checklist.bookId, item.payments[key].transactionId!);
+          }
+        }
       }
     }
   }

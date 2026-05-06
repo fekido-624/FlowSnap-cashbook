@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -10,8 +11,6 @@ import {
   toggleChecklistItem, 
   deleteChecklistItem, 
   deleteChecklist,
-  toggleChecklistItemFixed,
-  resetChecklistMonthly,
   Checklist,
   ChecklistItem
 } from "@/lib/services/db";
@@ -31,17 +30,16 @@ import {
   ArrowLeft, 
   Plus, 
   Trash2, 
-  Wallet, 
   ReceiptText, 
   CheckCircle2, 
   Loader2, 
   Edit2, 
-  CalendarClock, 
-  ShoppingBag,
-  RefreshCw,
-  Pin
+  Calendar,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { format, addMonths, startOfMonth, parse } from "date-fns";
 
 export default function ChecklistDetailPage() {
   const { id } = useParams() as { id: string };
@@ -49,7 +47,7 @@ export default function ChecklistDetailPage() {
   const [checklist, setChecklist] = useState<Checklist | null>(null);
   const [newItemName, setNewItemName] = useState("");
   const [newItemAmount, setNewItemAmount] = useState("");
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [newItemValidUntil, setNewItemValidUntil] = useState("");
   const [editingItem, setEditingItem] = useState<ChecklistItem | null>(null);
   const [editName, setEditName] = useState("");
   const [editAmount, setEditAmount] = useState("");
@@ -58,6 +56,20 @@ export default function ChecklistDetailPage() {
   
   const router = useRouter();
   const { toast } = useToast();
+
+  // Jana 12 bulan dari sekarang sebagai timeline
+  const months = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const d = addMonths(startOfMonth(new Date()), i);
+      return {
+        label: format(d, "MMMM yyyy"),
+        key: format(d, "yyyy-MM"),
+        date: d
+      };
+    });
+  }, []);
+
+  const currentMonthKey = months[currentSlide].key;
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
@@ -79,25 +91,40 @@ export default function ChecklistDetailPage() {
 
   const stats = useMemo(() => {
     if (!checklist) return { total: 0, paid: 0, pending: 0 };
-    return checklist.items.reduce((acc, item) => {
+    const monthKey = months[currentSlide].key;
+    
+    // Tapis item yang sah untuk bulan ini sahaja
+    const validItems = checklist.items.filter(item => {
+      if (!item.validUntil) return true;
+      return item.validUntil >= monthKey;
+    });
+
+    return validItems.reduce((acc, item) => {
       acc.total += item.amount;
-      if (item.isPaid) acc.paid += item.amount;
+      const isPaid = item.payments?.[monthKey]?.isPaid || false;
+      if (isPaid) acc.paid += item.amount;
       else acc.pending += item.amount;
       return acc;
     }, { total: 0, paid: 0, pending: 0 });
-  }, [checklist]);
+  }, [checklist, currentSlide, months]);
 
-  const activeItems = useMemo(() => checklist?.items.filter(i => !i.isFixed) || [], [checklist]);
-  const fixedItems = useMemo(() => checklist?.items.filter(i => i.isFixed) || [], [checklist]);
+  const filteredItems = useMemo(() => {
+    if (!checklist) return [];
+    const monthKey = months[currentSlide].key;
+    return checklist.items.filter(item => {
+      if (!item.validUntil) return true;
+      return item.validUntil >= monthKey;
+    });
+  }, [checklist, currentSlide, months]);
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemName.trim() || !newItemAmount) return;
     try {
-      // Tambah sebagai fixed jika berada di slide fixed
-      await addChecklistItem(id, newItemName.trim(), parseFloat(newItemAmount), currentSlide === 1);
+      await addChecklistItem(id, newItemName.trim(), parseFloat(newItemAmount), newItemValidUntil || undefined);
       setNewItemName("");
       setNewItemAmount("");
+      setNewItemValidUntil("");
       toast({ title: "Item Ditambah", description: "Item baru telah ditambah ke dalam senarai." });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Ralat", description: e.message });
@@ -107,19 +134,9 @@ export default function ChecklistDetailPage() {
   const handleUpdateItem = async () => {
     if (!user || !editingItem || !editName.trim() || !editAmount) return;
     try {
-      await updateChecklistItem(user.uid, id, editingItem.id, editName.trim(), parseFloat(editAmount));
+      await updateChecklistItem(user.uid, id, editingItem.id, editName.trim(), parseFloat(editAmount), currentMonthKey);
       setEditingItem(null);
       toast({ title: "Item Dikemas Kini", description: "Maklumat item telah disimpan." });
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Ralat", description: e.message });
-    }
-  };
-
-  const handleResetMonth = async () => {
-    if (!confirm("Adakah anda mahu memulakan bulan baru? Ini akan memadam item sekali-sekala dan reset bayaran untuk item tetap.")) return;
-    try {
-      await resetChecklistMonthly(id);
-      toast({ title: "Bulan Baru Bermula", description: "Senarai telah dibersihkan." });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Ralat", description: e.message });
     }
@@ -141,31 +158,40 @@ export default function ChecklistDetailPage() {
           </Button>
           <h1 className="text-xl font-bold truncate">{checklist.name}</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={handleResetMonth} className="rounded-full text-primary hover:bg-primary/5">
-            <RefreshCw className="w-5 h-5" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => {
-              if (confirm("Padam keseluruhan checklist ini?")) {
-                deleteChecklist(id);
-                router.push("/checklists");
-              }
-            }} 
-            className="rounded-full text-rose-500 hover:bg-rose-50"
-          >
-            <Trash2 className="w-5 h-5" />
-          </Button>
-        </div>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => {
+            if (confirm("Padam keseluruhan checklist ini?")) {
+              deleteChecklist(id);
+              router.push("/checklists");
+            }
+          }} 
+          className="rounded-full text-rose-500 hover:bg-rose-50"
+        >
+          <Trash2 className="w-5 h-5" />
+        </Button>
       </header>
 
       <div className="px-6 space-y-6">
+        {/* Month Navigation */}
+        <div className="flex items-center justify-between bg-primary/5 p-4 rounded-3xl">
+          <Button variant="ghost" size="icon" onClick={() => api?.scrollPrev()} disabled={currentSlide === 0}>
+            <ChevronLeft className="w-6 h-6" />
+          </Button>
+          <div className="text-center">
+            <h2 className="text-lg font-black text-primary">{months[currentSlide].label}</h2>
+            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Swipe untuk tukar bulan</p>
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => api?.scrollNext()} disabled={currentSlide === months.length - 1}>
+            <ChevronRight className="w-6 h-6" />
+          </Button>
+        </div>
+
         {/* Stats Summary */}
         <Card className="bg-primary text-white border-none shadow-xl rounded-[2.5rem] p-6">
           <div className="flex flex-col items-center text-center mb-6">
-            <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-1">Jumlah Keseluruhan</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-1">Status Bayaran: {months[currentSlide].label}</span>
             <span className="text-4xl font-black">RM{stats.total.toLocaleString()}</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -180,104 +206,55 @@ export default function ChecklistDetailPage() {
           </div>
         </Card>
 
-        {/* Swipe Indicators */}
-        <div className="flex gap-2 items-center justify-center">
-           <button 
-             onClick={() => api?.scrollTo(0)}
-             className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase transition-all flex items-center gap-2 ${currentSlide === 0 ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}
-           >
-             <ShoppingBag className="w-3 h-3" /> Senarai Semasa
-           </button>
-           <button 
-             onClick={() => api?.scrollTo(1)}
-             className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase transition-all flex items-center gap-2 ${currentSlide === 1 ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}
-           >
-             <CalendarClock className="w-3 h-3" /> Komitmen Tetap
-           </button>
-        </div>
-
         {/* Carousel Content */}
         <Carousel setApi={setApi} className="w-full">
           <CarouselContent>
-            {/* Slide 1: Senarai Semasa */}
-            <CarouselItem>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <ReceiptText className="w-4 h-4 text-primary" />
-                    KEPERLUAN SEMASA
-                  </h2>
-                  <span className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded-full">{activeItems.length} ITEM</span>
-                </div>
+            {months.map((month) => (
+              <CarouselItem key={month.key}>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                      <ReceiptText className="w-4 h-4 text-primary" />
+                      SENARAI KOMITMEN
+                    </h2>
+                    <span className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded-full">{filteredItems.length} ITEM</span>
+                  </div>
 
-                <div className="space-y-2">
-                  {activeItems.length === 0 ? (
-                    <div className="text-center py-10 opacity-30 text-xs italic bg-muted/20 rounded-2xl">
-                      Tiada item sekali-sekala. Swipe ke kanan untuk item tetap.
-                    </div>
-                  ) : (
-                    activeItems.map((item) => (
-                      <ItemRow 
-                        key={item.id} 
-                        item={item} 
-                        userUid={user!.uid} 
-                        checklistId={id} 
-                        onEdit={() => {
-                          setEditingItem(item);
-                          setEditName(item.name);
-                          setEditAmount(item.amount.toString());
-                        }}
-                      />
-                    ))
-                  )}
+                  <div className="space-y-2 min-h-[200px]">
+                    {filteredItems.length === 0 ? (
+                      <div className="text-center py-10 opacity-30 text-xs italic bg-muted/20 rounded-2xl">
+                        Tiada komitmen untuk bulan ini.
+                      </div>
+                    ) : (
+                      filteredItems.map((item) => (
+                        <ItemRow 
+                          key={item.id} 
+                          item={item} 
+                          userUid={user!.uid} 
+                          checklistId={id} 
+                          monthKey={month.key}
+                          onEdit={() => {
+                            setEditingItem(item);
+                            setEditName(item.name);
+                            setEditAmount(item.amount.toString());
+                          }}
+                        />
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
-            </CarouselItem>
-
-            {/* Slide 2: Item Tetap */}
-            <CarouselItem>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                    <CalendarClock className="w-4 h-4" />
-                    KOMITMEN BULANAN
-                  </h2>
-                  <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">{fixedItems.length} ITEM</span>
-                </div>
-
-                <div className="space-y-2">
-                  {fixedItems.length === 0 ? (
-                    <div className="text-center py-10 opacity-30 text-xs italic bg-muted/20 rounded-2xl">
-                      Belum ada komitmen tetap bulanan (Bil, Sewa, dsb).
-                    </div>
-                  ) : (
-                    fixedItems.map((item) => (
-                      <ItemRow 
-                        key={item.id} 
-                        item={item} 
-                        userUid={user!.uid} 
-                        checklistId={id} 
-                        onEdit={() => {
-                          setEditingItem(item);
-                          setEditName(item.name);
-                          setEditAmount(item.amount.toString());
-                        }}
-                      />
-                    ))
-                  )}
-                </div>
-              </div>
-            </CarouselItem>
+              </CarouselItem>
+            ))}
           </CarouselContent>
         </Carousel>
 
-        {/* Add Item Form (Sticky at bottom-ish) */}
+        {/* Add Item Form */}
         <form onSubmit={handleAddItem} className="space-y-3 bg-muted/30 p-4 rounded-[2rem] border border-muted mt-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-[10px] font-bold ml-1 text-muted-foreground uppercase tracking-widest">Nama Item</Label>
               <Input 
-                placeholder={currentSlide === 0 ? "Beras, Telur..." : "Bil Air, Sewa..."}
+                placeholder="Bil Api, Sewa..."
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
                 className="h-10 rounded-xl border-none shadow-sm"
@@ -294,8 +271,17 @@ export default function ChecklistDetailPage() {
               />
             </div>
           </div>
+          <div className="space-y-1">
+            <Label className="text-[10px] font-bold ml-1 text-muted-foreground uppercase tracking-widest">Aktif Sehingga (Pilihan)</Label>
+            <Input 
+              type="month"
+              value={newItemValidUntil}
+              onChange={(e) => setNewItemValidUntil(e.target.value)}
+              className="h-10 rounded-xl border-none shadow-sm"
+            />
+          </div>
           <Button type="submit" className="w-full h-10 rounded-xl font-bold flex gap-2">
-            <Plus className="w-4 h-4" /> Tambah {currentSlide === 1 ? 'Komitmen' : 'Barang'}
+            <Plus className="w-4 h-4" /> Tambah Item Jadual
           </Button>
         </form>
       </div>
@@ -324,24 +310,24 @@ export default function ChecklistDetailPage() {
   );
 }
 
-function ItemRow({ item, userUid, checklistId, onEdit }: { item: ChecklistItem, userUid: string, checklistId: string, onEdit: () => void }) {
-  const { toast } = useToast();
-  
+function ItemRow({ item, userUid, checklistId, monthKey, onEdit }: { item: ChecklistItem, userUid: string, checklistId: string, monthKey: string, onEdit: () => void }) {
+  const isPaid = item.payments?.[monthKey]?.isPaid || false;
+  const transactionId = item.payments?.[monthKey]?.transactionId;
+
   return (
-    <div className={`flex items-center gap-4 p-4 rounded-2xl border-none shadow-sm transition-all ${item.isPaid ? 'bg-muted/50 opacity-60' : 'bg-card'}`}>
+    <div className={`flex items-center gap-4 p-4 rounded-2xl border-none shadow-sm transition-all ${isPaid ? 'bg-muted/50 opacity-60' : 'bg-card'}`}>
       <Checkbox 
-        checked={item.isPaid} 
-        onCheckedChange={() => toggleChecklistItem(userUid, checklistId, item.id)}
+        checked={isPaid} 
+        onCheckedChange={() => toggleChecklistItem(userUid, checklistId, item.id, monthKey)}
         className="w-6 h-6 rounded-lg border-2"
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className={`font-bold text-sm truncate ${item.isPaid ? 'line-through' : ''}`}>{item.name}</p>
-          {item.isFixed && <Pin className="w-3 h-3 text-primary shrink-0" />}
+          <p className={`font-bold text-sm truncate ${isPaid ? 'line-through' : ''}`}>{item.name}</p>
         </div>
         <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
           <span className="font-black text-primary">RM{item.amount.toLocaleString()}</span>
-          {item.transactionId && (
+          {transactionId && (
             <span className="flex items-center gap-0.5 bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-full font-bold">
               <CheckCircle2 className="w-2.5 h-2.5" /> Direkod
             </span>
@@ -349,15 +335,6 @@ function ItemRow({ item, userUid, checklistId, onEdit }: { item: ChecklistItem, 
         </div>
       </div>
       <div className="flex items-center gap-1">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => toggleChecklistItemFixed(checklistId, item.id)}
-          className={`rounded-full h-8 w-8 ${item.isFixed ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
-          title={item.isFixed ? "Item Tetap Bulanan" : "Tukar ke Tetap"}
-        >
-          <CalendarClock className="w-4 h-4" />
-        </Button>
         <Button variant="ghost" size="icon" onClick={onEdit} className="rounded-full h-8 w-8 text-muted-foreground">
           <Edit2 className="w-4 h-4" />
         </Button>
