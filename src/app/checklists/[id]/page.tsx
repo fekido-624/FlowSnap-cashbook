@@ -37,7 +37,8 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  History
+  History,
+  AlertTriangle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format, addMonths, startOfMonth } from "date-fns";
@@ -141,6 +142,24 @@ export default function ChecklistDetailPage() {
     }
   };
 
+  const handleDeleteItem = async (itemId: string, itemName: string) => {
+    const hasHistory = checklist?.items.find(i => i.id === itemId)?.payments;
+    const historyCount = hasHistory ? Object.keys(hasHistory).length : 0;
+
+    const msg = historyCount > 0 
+      ? `Item "${itemName}" mempunyai ${historyCount} rekod bayaran sebelum ini. Memadam item ini akan turut memadam SEMUA rekod transaksinya dalam Buku Akaun. Teruskan?`
+      : `Adakah anda pasti mahu memadam "${itemName}"?`;
+
+    if (confirm(msg)) {
+      try {
+        await deleteChecklistItem(id, itemId);
+        toast({ title: "Dipadam", description: "Item telah dibuang daripada senarai." });
+      } catch (e: any) {
+        toast({ variant: "destructive", title: "Ralat", description: e.message });
+      }
+    }
+  };
+
   if (!checklist) return (
     <div className="flex flex-col items-center justify-center h-svh gap-2">
       <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -161,7 +180,7 @@ export default function ChecklistDetailPage() {
           variant="ghost" 
           size="icon" 
           onClick={() => {
-            if (confirm("Padam keseluruhan checklist ini?")) {
+            if (confirm("Padam keseluruhan checklist ini? Semua sejarah bayaran dalam Buku Akaun juga akan terpadam.")) {
               deleteChecklist(id);
               router.push("/checklists");
             }
@@ -234,6 +253,7 @@ export default function ChecklistDetailPage() {
                             setEditName(item.name);
                             setEditAmount(item.amount.toString());
                           }}
+                          onDelete={() => handleDeleteItem(item.id, item.name)}
                         />
                       ))
                     )}
@@ -274,6 +294,9 @@ export default function ChecklistDetailPage() {
               onChange={(e) => setNewItemValidUntil(e.target.value)}
               className="h-10 rounded-xl border-none shadow-sm"
             />
+            <p className="text-[8px] text-muted-foreground px-1 italic">
+              Gunakan ini untuk "menghentikan" komitmen pada masa depan tanpa memadam rekod lama.
+            </p>
           </div>
           <Button type="submit" className="w-full h-10 rounded-xl font-bold flex gap-2">
             <Plus className="w-4 h-4" /> Tambah Item Jadual
@@ -305,7 +328,21 @@ export default function ChecklistDetailPage() {
   );
 }
 
-function ItemRow({ item, userUid, checklistId, monthKey, onEdit }: { item: ChecklistItem, userUid: string, checklistId: string, monthKey: string, onEdit: () => void }) {
+function ItemRow({ 
+  item, 
+  userUid, 
+  checklistId, 
+  monthKey, 
+  onEdit, 
+  onDelete 
+}: { 
+  item: ChecklistItem, 
+  userUid: string, 
+  checklistId: string, 
+  monthKey: string, 
+  onEdit: () => void,
+  onDelete: () => void
+}) {
   const isPaid = item.payments?.[monthKey]?.isPaid || false;
   const transactionId = item.payments?.[monthKey]?.transactionId;
 
@@ -354,12 +391,8 @@ function ItemRow({ item, userUid, checklistId, monthKey, onEdit }: { item: Check
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={() => {
-            if (confirm(`Padam item "${item.name}"? Sejarah bayaran juga akan dipadam.`)) {
-              deleteChecklistItem(checklistId, item.id);
-            }
-          }}
-          className="rounded-full h-8 w-8 text-muted-foreground hover:text-rose-500"
+          onClick={onDelete}
+          className="rounded-full h-8 w-8 text-muted-foreground hover:text-rose-500 hover:bg-rose-50"
         >
           <Trash2 className="w-4 h-4" />
         </Button>

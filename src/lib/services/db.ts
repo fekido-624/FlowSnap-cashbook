@@ -326,7 +326,6 @@ export const updateChecklistItem = async (userId: string, checklistId: string, i
 
   const item = checklist.items[iIdx];
   
-  // Jika item sudah dibayar pada bulan tertentu, kemas kini transaksinya
   if (monthKey && item.payments[monthKey]?.isPaid && item.payments[monthKey].transactionId && checklist.bookId) {
     await updateTransaction(userId, checklist.bookId, item.payments[monthKey].transactionId!, {
       amount: amount,
