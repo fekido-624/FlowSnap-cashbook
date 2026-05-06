@@ -28,6 +28,7 @@ export interface ChecklistItem {
   name: string;
   amount: number;
   isPaid: boolean;
+  isFixed?: boolean; // Item tetap yang berulang setiap bulan
   transactionId?: string;
 }
 
@@ -290,7 +291,7 @@ export const subscribeToChecklist = (id: string, callback: (data: Checklist | nu
   return () => clearInterval(interval);
 };
 
-export const addChecklistItem = async (checklistId: string, name: string, amount: number) => {
+export const addChecklistItem = async (checklistId: string, name: string, amount: number, isFixed = false) => {
   const checklists = getLocalChecklists();
   const idx = checklists.findIndex(c => c.id === checklistId);
   if (idx === -1) return;
@@ -299,10 +300,24 @@ export const addChecklistItem = async (checklistId: string, name: string, amount
     id: Math.random().toString(36).substr(2, 9),
     name,
     amount,
-    isPaid: false
+    isPaid: false,
+    isFixed
   };
 
   checklists[idx].items.push(newItem);
+  setLocalChecklists(checklists);
+};
+
+export const toggleChecklistItemFixed = async (checklistId: string, itemId: string) => {
+  const checklists = getLocalChecklists();
+  const cIdx = checklists.findIndex(c => c.id === checklistId);
+  if (cIdx === -1) return;
+
+  const checklist = checklists[cIdx];
+  const iIdx = checklist.items.findIndex(i => i.id === itemId);
+  if (iIdx === -1) return;
+
+  checklist.items[iIdx].isFixed = !checklist.items[iIdx].isFixed;
   setLocalChecklists(checklists);
 };
 
@@ -317,7 +332,6 @@ export const updateChecklistItem = async (userId: string, checklistId: string, i
 
   const item = checklist.items[iIdx];
   
-  // Jika item sudah dibayar dan ada pautan buku akaun, kemas kini transaksi juga
   if (item.isPaid && item.transactionId && checklist.bookId) {
     await updateTransaction(userId, checklist.bookId, item.transactionId, {
       amount: amount,
@@ -343,7 +357,6 @@ export const toggleChecklistItem = async (userId: string, checklistId: string, i
   const newPaidStatus = !item.isPaid;
 
   if (newPaidStatus && checklist.bookId) {
-    // Automatik tambah transaksi ke Buku Akaun
     const tx = await addTransaction(userId, checklist.bookId, {
       type: 'out',
       amount: item.amount,
@@ -353,12 +366,33 @@ export const toggleChecklistItem = async (userId: string, checklistId: string, i
     });
     item.transactionId = tx.id;
   } else if (!newPaidStatus && item.transactionId && checklist.bookId) {
-    // Padam transaksi jika un-tick
     await deleteTransaction(checklist.bookId, item.transactionId);
     item.transactionId = undefined;
   }
 
   item.isPaid = newPaidStatus;
+  setLocalChecklists(checklists);
+};
+
+export const resetChecklistMonthly = async (checklistId: string) => {
+  const checklists = getLocalChecklists();
+  const cIdx = checklists.findIndex(c => c.id === checklistId);
+  if (cIdx === -1) return;
+
+  const checklist = checklists[cIdx];
+  
+  // Padam transaksi untuk semua item (fixed & normal) yang sdh dibayar
+  for (const item of checklist.items) {
+    if (item.isPaid && item.transactionId && checklist.bookId) {
+      await deleteTransaction(checklist.bookId, item.transactionId);
+    }
+  }
+
+  // Buang item normal, biarkan item fixed tapi reset status bayar
+  checklist.items = checklist.items
+    .filter(item => item.isFixed)
+    .map(item => ({ ...item, isPaid: false, transactionId: undefined }));
+    
   setLocalChecklists(checklists);
 };
 
@@ -383,7 +417,6 @@ export const deleteChecklist = async (id: string) => {
   const checklist = checklists.find(c => c.id === id);
   
   if (checklist) {
-    // Padam semua transaksi berkaitan item dalam checklist ini
     for (const item of checklist.items) {
       if (item.transactionId && checklist.bookId) {
         await deleteTransaction(checklist.bookId, item.transactionId);
