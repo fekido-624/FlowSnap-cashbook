@@ -3,7 +3,7 @@
 import { useAuth } from "@/lib/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, User, LogOut, Mail, ShieldCheck, BookOpen, ListChecks } from "lucide-react";
+import { ArrowLeft, User, LogOut, Mail, ShieldCheck, BookOpen, ListChecks, LayoutDashboard } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -26,6 +26,7 @@ export default function ProfilePage() {
       <Sidebar />
 
       <main className="flex-1 p-6 md:p-10 pb-32 md:pb-10 max-w-7xl mx-auto w-full">
+        {/* Mobile Header */}
         <header className="flex md:hidden items-center gap-4 mb-8">
           <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full">
             <ArrowLeft className="w-5 h-5" />
@@ -33,62 +34,73 @@ export default function ProfilePage() {
           <h1 className="text-2xl font-black">Profil Pengguna</h1>
         </header>
 
-        <div className="max-w-2xl mx-auto space-y-10">
-          <div className="flex flex-col items-center md:items-start gap-6">
-            <div className="w-32 h-32 bg-primary/10 rounded-[3rem] flex items-center justify-center border-4 border-white shadow-2xl">
+        <div className="max-w-3xl mx-auto space-y-10">
+          {/* Profile Header Section */}
+          <div className="flex flex-col items-center md:items-start md:flex-row gap-6 md:gap-10">
+            <div className="w-32 h-32 bg-primary/10 rounded-[3rem] flex items-center justify-center border-4 border-white shadow-2xl shrink-0">
               <User className="w-16 h-16 text-primary" />
             </div>
-            <div className="text-center md:text-left">
-              <h2 className="text-4xl font-black tracking-tight">{user.email?.split('@')[0]}</h2>
-              <p className="text-muted-foreground font-medium">Local User Mode • BukuAkaun Member</p>
+            <div className="text-center md:text-left flex flex-col justify-center">
+              <h2 className="text-4xl font-black tracking-tight mb-2">{user.email?.split('@')[0]}</h2>
+              <div className="flex flex-wrap justify-center md:justify-start gap-2">
+                <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-full">
+                  Local User Mode
+                </span>
+                <span className="px-3 py-1 bg-muted text-muted-foreground text-[10px] font-black uppercase tracking-widest rounded-full">
+                  v1.0.0-PRO
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="border-none shadow-sm rounded-[2.5rem] bg-card">
-              <CardContent className="p-8 space-y-6">
-                <div className="flex items-center gap-4">
-                  <div className="bg-muted p-4 rounded-2xl">
-                    <Mail className="w-6 h-6 text-muted-foreground" />
+          {/* Main Content Card */}
+          <Card className="border-none shadow-sm rounded-[3rem] bg-card overflow-hidden">
+            <CardContent className="p-8 md:p-12 space-y-10">
+              {/* Information Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+                <div className="flex items-center gap-5">
+                  <div className="bg-primary/5 p-5 rounded-[1.5rem] shrink-0">
+                    <Mail className="w-6 h-6 text-primary" />
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Emel Utama</span>
-                    <span className="font-bold text-lg">{user.email}</span>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mb-1">Emel Utama</span>
+                    <span className="font-bold text-lg truncate">{user.email}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                  <div className="bg-muted p-4 rounded-2xl">
-                    <ShieldCheck className="w-6 h-6 text-muted-foreground" />
+                <div className="flex items-center gap-5">
+                  <div className="bg-emerald-50 p-5 rounded-[1.5rem] shrink-0">
+                    <ShieldCheck className="w-6 h-6 text-emerald-600" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Status Keselamatan</span>
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mb-1">Status Keselamatan</span>
                     <span className="font-bold text-lg text-emerald-600">Terjamin (Lokal)</span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            <div className="flex flex-col gap-4">
-              <Button 
-                variant="outline" 
-                className="h-16 rounded-[2rem] font-bold text-lg border-2 hover:bg-muted transition-all"
-                onClick={() => router.push('/books')}
-              >
-                Dashboard Utama
-              </Button>
-              <Button 
-                variant="destructive" 
-                className="h-16 rounded-[2rem] font-bold text-lg flex gap-3 shadow-xl shadow-destructive/10"
-                onClick={logout}
-              >
-                <LogOut className="w-6 h-6" /> Log Keluar
-              </Button>
-            </div>
-          </div>
+              {/* Action Buttons Section */}
+              <div className="pt-10 border-t border-dashed flex flex-col md:flex-row gap-4">
+                <Button 
+                  variant="outline" 
+                  className="flex-1 h-14 rounded-2xl font-bold text-base border-2 hover:bg-muted transition-all flex gap-2"
+                  onClick={() => router.push('/books')}
+                >
+                  <LayoutDashboard className="w-5 h-5" /> Dashboard Utama
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  className="flex-1 h-14 rounded-2xl font-bold text-base flex gap-2 shadow-xl shadow-destructive/10"
+                  onClick={logout}
+                >
+                  <LogOut className="w-5 h-5" /> Log Keluar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-          <footer className="text-center md:text-left text-[11px] text-muted-foreground font-bold uppercase tracking-[0.3em] opacity-40">
-            FlowSnap System Engine v1.0.0-PRO
+          <footer className="text-center text-[11px] text-muted-foreground font-bold uppercase tracking-[0.3em] opacity-40">
+            FlowSnap System Engine • Pengurusan Kewangan Peribadi
           </footer>
         </div>
       </main>
