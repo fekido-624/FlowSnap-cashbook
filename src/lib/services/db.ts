@@ -23,12 +23,28 @@ export interface Transaction {
   runningBalance: number;
 }
 
+export interface ChecklistItem {
+  id: string;
+  name: string;
+  amount: number;
+  isPaid: boolean;
+  transactionId?: string;
+}
+
+export interface Checklist {
+  id: string;
+  userId: string;
+  name: string;
+  bookId?: string;
+  items: ChecklistItem[];
+  createdAt: { toDate: () => Date };
+}
+
 const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Shopping", "Others", "Salary", "Investment"];
 
 const getLocalBooks = (): Book[] => {
   if (typeof window === 'undefined') return [];
   const books = JSON.parse(localStorage.getItem('flowsnap_books') || '[]');
-  // Pastikan data lama mempunyai customCategories
   return books.map((b: any) => ({
     ...b,
     customCategories: b.customCategories || [...DEFAULT_CATEGORIES]
@@ -48,6 +64,16 @@ const setLocalTransactions = (bookId: string, txs: Transaction[]) => {
   localStorage.setItem(`flowsnap_txs_${bookId}`, JSON.stringify(txs));
 };
 
+const getLocalChecklists = (): Checklist[] => {
+  if (typeof window === 'undefined') return [];
+  return JSON.parse(localStorage.getItem('flowsnap_checklists') || '[]');
+};
+
+const setLocalChecklists = (checklists: Checklist[]) => {
+  localStorage.setItem('flowsnap_checklists', JSON.stringify(checklists));
+};
+
+// --- Book Services ---
 export const createBook = async (userId: string, name: string) => {
   const books = getLocalBooks();
   const newBook: Book = {
@@ -66,12 +92,9 @@ export const createBook = async (userId: string, name: string) => {
 };
 
 export const deleteBook = async (bookId: string) => {
-  // Padam buku dari senarai buku
   const books = getLocalBooks();
   const updatedBooks = books.filter(b => b.id !== bookId);
   setLocalBooks(updatedBooks);
-
-  // Padam semua transaksi berkaitan buku tersebut
   localStorage.removeItem(`flowsnap_txs_${bookId}`);
 };
 
@@ -110,21 +133,7 @@ export const subscribeToBook = (bookId: string, callback: (book: Book | null) =>
   return () => clearInterval(interval);
 };
 
-export const subscribeToTransactions = (bookId: string, filters: any, callback: (txs: Transaction[]) => void) => {
-  const update = () => {
-    const txs = getLocalTransactions(bookId).map(tx => ({
-      ...tx,
-      timestamp: { toDate: () => new Date(tx.timestamp as any) }
-    }));
-    // Susun mengikut tarikh menurun
-    txs.sort((a, b) => b.timestamp.toDate().getTime() - a.timestamp.toDate().getTime());
-    callback(txs as any);
-  };
-  update();
-  const interval = setInterval(update, 1000);
-  return () => clearInterval(interval);
-};
-
+// --- Transaction Services ---
 export const addTransaction = async (userId: string, bookId: string, data: any) => {
   const books = getLocalBooks();
   const bookIndex = books.findIndex(b => b.id === bookId);
@@ -136,7 +145,7 @@ export const addTransaction = async (userId: string, bookId: string, data: any) 
   const txs = getLocalTransactions(bookId);
   const newTx: Transaction = {
     ...data,
-    id: Math.random().toString(36).substr(2, 9),
+    id: data.id || Math.random().toString(36).substr(2, 9),
     userId,
     bookId,
     timestamp: new Date() as any,
@@ -168,7 +177,6 @@ export const updateTransaction = async (userId: string, bookId: string, txId: st
 
   const oldTx = txs[txIndex];
   
-  // Tolak impak lama
   if (oldTx.type === 'in') {
     books[bookIndex].netBalance -= oldTx.amount;
     books[bookIndex].totalCashIn -= oldTx.amount;
@@ -177,7 +185,6 @@ export const updateTransaction = async (userId: string, bookId: string, txId: st
     books[bookIndex].totalCashOut -= oldTx.amount;
   }
 
-  // Tambah impak baru
   if (data.type === 'in') {
     books[bookIndex].netBalance += data.amount;
     books[bookIndex].totalCashIn += data.amount;
@@ -189,7 +196,7 @@ export const updateTransaction = async (userId: string, bookId: string, txId: st
   const updatedTx: Transaction = {
     ...oldTx,
     ...data,
-    runningBalance: books[bookIndex].netBalance // Note: ringkas untuk MVP
+    runningBalance: books[bookIndex].netBalance
   };
 
   txs[txIndex] = updatedTx;
@@ -202,15 +209,14 @@ export const updateTransaction = async (userId: string, bookId: string, txId: st
 export const deleteTransaction = async (bookId: string, txId: string) => {
   const books = getLocalBooks();
   const bookIndex = books.findIndex(b => b.id === bookId);
-  if (bookIndex === -1) throw new Error("Buku tidak dijumpai");
+  if (bookIndex === -1) return;
 
   const txs = getLocalTransactions(bookId);
   const txIndex = txs.findIndex(t => t.id === txId);
-  if (txIndex === -1) throw new Error("Transaksi tidak dijumpai");
+  if (txIndex === -1) return;
 
   const txToDelete = txs[txIndex];
 
-  // Tolak impak transaksi yang dipadam daripada baki buku
   if (txToDelete.type === 'in') {
     books[bookIndex].netBalance -= txToDelete.amount;
     books[bookIndex].totalCashIn -= txToDelete.amount;
@@ -219,9 +225,138 @@ export const deleteTransaction = async (bookId: string, txId: string) => {
     books[bookIndex].totalCashOut -= txToDelete.amount;
   }
 
-  // Buang transaksi daripada senarai
   txs.splice(txIndex, 1);
-  
   setLocalTransactions(bookId, txs);
   setLocalBooks(books);
+};
+
+export const subscribeToTransactions = (bookId: string, filters: any, callback: (txs: Transaction[]) => void) => {
+  const update = () => {
+    const txs = getLocalTransactions(bookId).map(tx => ({
+      ...tx,
+      timestamp: { toDate: () => new Date(tx.timestamp as any) }
+    }));
+    txs.sort((a, b) => b.timestamp.toDate().getTime() - a.timestamp.toDate().getTime());
+    callback(txs as any);
+  };
+  update();
+  const interval = setInterval(update, 1000);
+  return () => clearInterval(interval);
+};
+
+// --- Checklist Services ---
+export const createChecklist = async (userId: string, name: string, bookId?: string) => {
+  const checklists = getLocalChecklists();
+  const newChecklist: Checklist = {
+    id: Math.random().toString(36).substr(2, 9),
+    userId,
+    name,
+    bookId,
+    items: [],
+    createdAt: { toDate: () => new Date() }
+  };
+  checklists.unshift(newChecklist);
+  setLocalChecklists(checklists);
+  return newChecklist;
+};
+
+export const subscribeToChecklists = (userId: string, callback: (data: Checklist[]) => void) => {
+  const update = () => {
+    const data = getLocalChecklists().filter(c => c.userId === userId);
+    callback(data);
+  };
+  update();
+  const interval = setInterval(update, 1000);
+  return () => clearInterval(interval);
+};
+
+export const subscribeToChecklist = (id: string, callback: (data: Checklist | null) => void) => {
+  const update = () => {
+    const data = getLocalChecklists().find(c => c.id === id) || null;
+    callback(data);
+  };
+  update();
+  const interval = setInterval(update, 1000);
+  return () => clearInterval(interval);
+};
+
+export const addChecklistItem = async (checklistId: string, name: string, amount: number) => {
+  const checklists = getLocalChecklists();
+  const idx = checklists.findIndex(c => c.id === checklistId);
+  if (idx === -1) return;
+
+  const newItem: ChecklistItem = {
+    id: Math.random().toString(36).substr(2, 9),
+    name,
+    amount,
+    isPaid: false
+  };
+
+  checklists[idx].items.push(newItem);
+  setLocalChecklists(checklists);
+};
+
+export const toggleChecklistItem = async (userId: string, checklistId: string, itemId: string) => {
+  const checklists = getLocalChecklists();
+  const cIdx = checklists.findIndex(c => c.id === checklistId);
+  if (cIdx === -1) return;
+
+  const checklist = checklists[cIdx];
+  const iIdx = checklist.items.findIndex(i => i.id === itemId);
+  if (iIdx === -1) return;
+
+  const item = checklist.items[iIdx];
+  const newPaidStatus = !item.isPaid;
+
+  if (newPaidStatus && checklist.bookId) {
+    // Automatik tambah transaksi ke Buku Akaun
+    const tx = await addTransaction(userId, checklist.bookId, {
+      type: 'out',
+      amount: item.amount,
+      method: 'Online',
+      category: 'Checklist',
+      description: `Bayaran: ${item.name} (${checklist.name})`
+    });
+    item.transactionId = tx.id;
+  } else if (!newPaidStatus && item.transactionId && checklist.bookId) {
+    // Padam transaksi jika un-tick
+    await deleteTransaction(checklist.bookId, item.transactionId);
+    item.transactionId = undefined;
+  }
+
+  item.isPaid = newPaidStatus;
+  setLocalChecklists(checklists);
+};
+
+export const deleteChecklistItem = async (checklistId: string, itemId: string) => {
+  const checklists = getLocalChecklists();
+  const cIdx = checklists.findIndex(c => c.id === checklistId);
+  if (cIdx === -1) return;
+
+  const checklist = checklists[cIdx];
+  const item = checklist.items.find(i => i.id === itemId);
+  
+  if (item?.transactionId && checklist.bookId) {
+    await deleteTransaction(checklist.bookId, item.transactionId);
+  }
+
+  checklist.items = checklist.items.filter(i => i.id !== itemId);
+  setLocalChecklists(checklists);
+};
+
+export const deleteChecklist = async (id: string) => {
+  const checklists = getLocalChecklists();
+  const checklist = checklists.find(c => c.id === id);
+  
+  if (checklist) {
+    // Padam semua transaksi berkaitan item dalam checklist ini
+    for (const item of checklist.items) {
+      if (item.transactionId && checklist.bookId) {
+        await deleteTransaction(checklist.bookId, item.transactionId);
+      }
+    }
+  }
+
+  const filtered = checklists.filter(c => c.id !== id);
+  setLocalChecklists(filtered);
 };
