@@ -65,6 +65,16 @@ export const createBook = async (userId: string, name: string) => {
   return newBook;
 };
 
+export const deleteBook = async (bookId: string) => {
+  // Padam buku dari senarai buku
+  const books = getLocalBooks();
+  const updatedBooks = books.filter(b => b.id !== bookId);
+  setLocalBooks(updatedBooks);
+
+  // Padam semua transaksi berkaitan buku tersebut
+  localStorage.removeItem(`flowsnap_txs_${bookId}`);
+};
+
 export const addCategoryToBook = async (bookId: string, category: string) => {
   const books = getLocalBooks();
   const index = books.findIndex(b => b.id === bookId);

@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/contexts/auth-context";
-import { subscribeToTransactions, subscribeToBook, Book, Transaction } from "@/lib/services/db";
+import { subscribeToTransactions, subscribeToBook, deleteBook, Book, Transaction } from "@/lib/services/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { 
@@ -15,11 +15,13 @@ import {
   History, 
   Calendar,
   Wallet,
-  Smartphone
+  Smartphone,
+  Trash2
 } from "lucide-react";
 import { TransactionModal } from "@/components/TransactionModal";
 import { FilterDrawer } from "@/components/FilterDrawer";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 export default function BookDetailPage() {
   const { id } = useParams() as { id: string };
@@ -32,6 +34,7 @@ export default function BookDetailPage() {
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
@@ -73,6 +76,25 @@ export default function BookDetailPage() {
     setEditingTx(null);
   };
 
+  const handleDeleteBook = async () => {
+    if (!confirm("Adakah anda pasti mahu memadam buku ini beserta semua transaksinya? Tindakan ini tidak boleh dibatalkan.")) return;
+    
+    try {
+      await deleteBook(id);
+      toast({
+        title: "Buku Dipadam",
+        description: "Buku akaun telah berjaya dipadamkan.",
+      });
+      router.push("/books");
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Ralat",
+        description: error.message,
+      });
+    }
+  };
+
   if (!book) return (
     <div className="flex items-center justify-center h-svh">
       <p className="text-muted-foreground animate-pulse">Memuatkan buku...</p>
@@ -82,15 +104,20 @@ export default function BookDetailPage() {
   return (
     <div className="max-w-md mx-auto min-h-svh flex flex-col bg-background pb-32">
       <header className="p-6 pb-2 sticky top-0 bg-background/80 backdrop-blur-lg z-10 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full">
+        <div className="flex items-center gap-3 min-w-0">
+          <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-xl font-bold truncate max-w-[200px]">{book.name}</h1>
+          <h1 className="text-xl font-bold truncate">{book.name}</h1>
         </div>
-        <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setIsFilterOpen(true)}>
-          <Filter className="w-5 h-5" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="rounded-full text-rose-500 hover:text-rose-600 hover:bg-rose-50" onClick={handleDeleteBook}>
+            <Trash2 className="w-5 h-5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setIsFilterOpen(true)}>
+            <Filter className="w-5 h-5" />
+          </Button>
+        </div>
       </header>
 
       <div className="px-6 space-y-6 overflow-y-auto mobile-scroll-container">
