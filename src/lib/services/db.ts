@@ -146,3 +146,45 @@ export const addTransaction = async (userId: string, bookId: string, data: any) 
 
   return newTx;
 };
+
+export const updateTransaction = async (userId: string, bookId: string, txId: string, data: any) => {
+  const books = getLocalBooks();
+  const bookIndex = books.findIndex(b => b.id === bookId);
+  if (bookIndex === -1) throw new Error("Buku tidak dijumpai");
+
+  const txs = getLocalTransactions(bookId);
+  const txIndex = txs.findIndex(t => t.id === txId);
+  if (txIndex === -1) throw new Error("Transaksi tidak dijumpai");
+
+  const oldTx = txs[txIndex];
+  
+  // Tolak impak lama
+  if (oldTx.type === 'in') {
+    books[bookIndex].netBalance -= oldTx.amount;
+    books[bookIndex].totalCashIn -= oldTx.amount;
+  } else {
+    books[bookIndex].netBalance += oldTx.amount;
+    books[bookIndex].totalCashOut -= oldTx.amount;
+  }
+
+  // Tambah impak baru
+  if (data.type === 'in') {
+    books[bookIndex].netBalance += data.amount;
+    books[bookIndex].totalCashIn += data.amount;
+  } else {
+    books[bookIndex].netBalance -= data.amount;
+    books[bookIndex].totalCashOut += data.amount;
+  }
+
+  const updatedTx: Transaction = {
+    ...oldTx,
+    ...data,
+    runningBalance: books[bookIndex].netBalance // Note: ringkas untuk MVP
+  };
+
+  txs[txIndex] = updatedTx;
+  setLocalTransactions(bookId, txs);
+  setLocalBooks(books);
+
+  return updatedTx;
+};

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addTransaction, addCategoryToBook, subscribeToBook, Book } from "@/lib/services/db";
+import { addTransaction, updateTransaction, addCategoryToBook, subscribeToBook, Book, Transaction } from "@/lib/services/db";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { suggestCategories } from "@/ai/flows/smart-category-suggestion";
@@ -17,21 +17,27 @@ interface TransactionModalProps {
   onClose: () => void;
   type: 'in' | 'out';
   bookId: string;
+  editingTransaction?: Transaction | null;
 }
 
-export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionModalProps) {
+export function TransactionModal({ isOpen, onClose, type: initialType, bookId, editingTransaction }: TransactionModalProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<'Cash' | 'Online'>("Cash");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
+  const [type, setType] = useState<'in' | 'out'>(initialType);
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [book, setBook] = useState<Book | null>(null);
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+
+  useEffect(() => {
+    setType(initialType);
+  }, [initialType]);
 
   useEffect(() => {
     if (bookId && isOpen) {
@@ -41,15 +47,25 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
   }, [bookId, isOpen]);
 
   useEffect(() => {
-    if (!isOpen) {
-      setAmount("");
-      setCategory("");
-      setDescription("");
+    if (isOpen) {
+      if (editingTransaction) {
+        setAmount(editingTransaction.amount.toString());
+        setMethod(editingTransaction.method);
+        setCategory(editingTransaction.category);
+        setDescription(editingTransaction.description || "");
+        setType(editingTransaction.type);
+      } else {
+        setAmount("");
+        setCategory("");
+        setDescription("");
+        setMethod("Cash");
+        setType(initialType);
+      }
       setSuggestions([]);
       setIsAddingNewCategory(false);
       setNewCategoryName("");
     }
-  }, [isOpen]);
+  }, [isOpen, editingTransaction, initialType]);
 
   const fetchSuggestions = async (desc: string) => {
     if (desc.length < 3) return;
@@ -82,14 +98,21 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
 
     setLoading(true);
     try {
-      await addTransaction(user.uid, bookId, {
+      const txData = {
         type,
         amount: parseFloat(amount),
         method,
         category,
         description: description.trim() || undefined
-      });
-      toast({ title: "Transaksi Berjaya", description: `Berjaya merekodkan ${type === 'in' ? 'pendapatan' : 'perbelanjaan'}.` });
+      };
+
+      if (editingTransaction) {
+        await updateTransaction(user.uid, bookId, editingTransaction.id, txData);
+        toast({ title: "Berjaya Dikemas Kini", description: "Transaksi telah dikemas kini." });
+      } else {
+        await addTransaction(user.uid, bookId, txData);
+        toast({ title: "Transaksi Berjaya", description: `Berjaya merekodkan ${type === 'in' ? 'pendapatan' : 'perbelanjaan'}.` });
+      }
       onClose();
     } catch (error: any) {
       toast({ variant: "destructive", title: "Ralat", description: error.message });
@@ -103,7 +126,7 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
       <DialogContent className="rounded-t-[2.5rem] sm:rounded-[2.5rem] max-w-[100vw] sm:max-w-md fixed bottom-0 top-auto translate-y-0 sm:top-[50%] sm:bottom-auto sm:translate-y-[-50%] p-8 border-none shadow-2xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-black text-center mb-4">
-            Rekod {type === 'in' ? 'Wang Masuk' : 'Wang Keluar'}
+            {editingTransaction ? 'Edit Rekod' : `Rekod ${type === 'in' ? 'Wang Masuk' : 'Wang Keluar'}`}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -240,7 +263,7 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
               className={`w-full h-14 rounded-2xl text-lg font-bold shadow-lg ${type === 'in' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-rose-500 hover:bg-rose-600'}`}
               disabled={loading || !category}
             >
-              {loading ? "Memproses..." : "Simpan Transaksi"}
+              {loading ? "Memproses..." : editingTransaction ? "Kemas Kini" : "Simpan Transaksi"}
             </Button>
           </DialogFooter>
         </form>

@@ -29,6 +29,7 @@ export default function BookDetailPage() {
   const [filter, setFilter] = useState({ method: 'All', category: 'All', dateRange: null as any });
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [txType, setTxType] = useState<'in' | 'out'>('in');
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const router = useRouter();
 
@@ -60,6 +61,17 @@ export default function BookDetailPage() {
       return matchMethod && matchCategory;
     });
   }, [transactions, filter]);
+
+  const handleEditTx = (tx: Transaction) => {
+    setEditingTx(tx);
+    setTxType(tx.type);
+    setIsTxModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsTxModalOpen(false);
+    setEditingTx(null);
+  };
 
   if (!book) return (
     <div className="flex items-center justify-center h-svh">
@@ -127,7 +139,11 @@ export default function BookDetailPage() {
               </div>
             ) : (
               filteredTransactions.map((tx) => (
-                <Card key={tx.id} className="border-none shadow-sm rounded-2xl overflow-hidden p-4 flex items-center gap-4">
+                <Card 
+                  key={tx.id} 
+                  className="border-none shadow-sm rounded-2xl overflow-hidden p-4 flex items-center gap-4 cursor-pointer active:scale-95 transition-transform"
+                  onClick={() => handleEditTx(tx)}
+                >
                   <div className={`p-3 rounded-2xl ${tx.type === 'in' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
                     {tx.type === 'in' ? <ArrowUpCircle className="w-6 h-6" /> : <ArrowDownCircle className="w-6 h-6" />}
                   </div>
@@ -164,13 +180,13 @@ export default function BookDetailPage() {
       <div className="fixed bottom-0 left-0 right-0 p-6 flex gap-4 max-w-md mx-auto bg-gradient-to-t from-background via-background to-transparent pointer-events-none">
         <Button 
           className="flex-1 h-14 rounded-2xl shadow-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-lg flex gap-2 pointer-events-auto transition-transform active:scale-95"
-          onClick={() => { setTxType('in'); setIsTxModalOpen(true); }}
+          onClick={() => { setTxType('in'); setEditingTx(null); setIsTxModalOpen(true); }}
         >
           <Plus className="w-6 h-6" /> Masuk
         </Button>
         <Button 
           className="flex-1 h-14 rounded-2xl shadow-lg bg-rose-500 hover:bg-rose-600 text-white font-bold text-lg flex gap-2 pointer-events-auto transition-transform active:scale-95"
-          onClick={() => { setTxType('out'); setIsTxModalOpen(true); }}
+          onClick={() => { setTxType('out'); setEditingTx(null); setIsTxModalOpen(true); }}
         >
           <ArrowDownCircle className="w-6 h-6" /> Keluar
         </Button>
@@ -178,9 +194,10 @@ export default function BookDetailPage() {
 
       <TransactionModal 
         isOpen={isTxModalOpen} 
-        onClose={() => setIsTxModalOpen(false)} 
+        onClose={handleCloseModal} 
         type={txType} 
         bookId={id} 
+        editingTransaction={editingTx}
       />
 
       <FilterDrawer 
