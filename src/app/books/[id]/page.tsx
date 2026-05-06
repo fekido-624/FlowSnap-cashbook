@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -14,7 +13,6 @@ import {
   Filter, 
   Plus, 
   History, 
-  Calendar,
   Wallet,
   Smartphone,
   Trash2,
@@ -29,6 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Sidebar } from "@/components/Sidebar";
 
 export default function BookDetailPage() {
   const { id } = useParams() as { id: string };
@@ -76,7 +75,6 @@ export default function BookDetailPage() {
     });
   }, [transactions, filter, searchQuery]);
 
-  // Statistik perbelanjaan mengikut kategori dengan pembulatan tepat
   const { categoryStats, totalExpenseSum } = useMemo(() => {
     const expenses = filteredTransactions.filter(tx => tx.type === 'out');
     const totalExpense = expenses.reduce((sum, tx) => sum + tx.amount, 0);
@@ -159,183 +157,223 @@ export default function BookDetailPage() {
   const isFilterActive = filter.method !== 'All' || filter.category !== 'All' || searchQuery !== "";
 
   return (
-    <div className="max-w-md mx-auto min-h-svh flex flex-col bg-background pb-32">
-      <header className="p-6 pb-2 sticky top-0 bg-background/80 backdrop-blur-lg z-10 flex items-center justify-between">
-        <div className="flex items-center gap-3 min-w-0">
-          <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full shrink-0">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <h1 className="text-xl font-bold truncate">{book.name}</h1>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="rounded-full text-rose-500 hover:text-rose-600 hover:bg-rose-50" onClick={handleDeleteBook}>
-            <Trash2 className="w-5 h-5" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className={`rounded-full ${isFilterActive ? 'text-primary bg-primary/10' : ''}`} 
-            onClick={() => setIsFilterOpen(true)}
-          >
-            <Filter className="w-5 h-5" />
-          </Button>
-        </div>
-      </header>
+    <div className="min-h-svh bg-background flex flex-col md:flex-row">
+      <Sidebar />
 
-      <div className="px-6 space-y-6 overflow-y-auto mobile-scroll-container">
-        {/* Balance Card */}
-        <Card className="bg-primary text-white border-none shadow-xl rounded-[2.5rem] p-8">
-          <div className="flex flex-col items-center gap-1 text-center mb-8">
-            <span className="text-sm font-medium opacity-80 uppercase tracking-widest">
-              {isFilterActive ? 'Baki (Ditapis)' : 'Baki Bersih'}
-            </span>
-            <span className="text-5xl font-black tracking-tighter">
-              RM{filteredStats.net.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-            </span>
+      <main className="flex-1 p-6 md:p-10 pb-32 md:pb-10 max-w-7xl mx-auto w-full">
+        <header className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3 min-w-0">
+            <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full shrink-0">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h1 className="text-2xl font-black truncate">{book.name}</h1>
           </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white/10 rounded-3xl p-4 flex flex-col items-center">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span className="text-[10px] uppercase font-bold opacity-70">Masuk</span>
-              </div>
-              <span className="text-lg font-bold truncate">RM{filteredStats.totalIn.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-            </div>
-            <div className="bg-white/10 rounded-3xl p-4 flex flex-col items-center">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-2 h-2 rounded-full bg-rose-400" />
-                <span className="text-[10px] uppercase font-bold opacity-70">Keluar</span>
-              </div>
-              <span className="text-lg font-bold truncate">RM{filteredStats.totalOut.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-            </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="rounded-full text-rose-500 hover:text-rose-600 hover:bg-rose-50" onClick={handleDeleteBook}>
+              <Trash2 className="w-5 h-5" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className={`rounded-full ${isFilterActive ? 'text-primary border-primary' : ''}`} 
+              onClick={() => setIsFilterOpen(true)}
+            >
+              <Filter className="w-5 h-5" />
+            </Button>
           </div>
-        </Card>
+        </header>
 
-        {/* Search & Tabs */}
-        <Tabs defaultValue="transactions" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 rounded-2xl h-12 bg-muted/50 p-1 mb-6">
-            <TabsTrigger value="transactions" className="rounded-xl font-bold flex gap-2">
-              <History className="w-4 h-4" /> Transaksi
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="rounded-xl font-bold flex gap-2">
-              <PieChartIcon className="w-4 h-4" /> Analisis
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="transactions" className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input 
-                placeholder="Cari kategori atau catatan..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-12 rounded-2xl border-none bg-muted/30 focus-visible:ring-primary shadow-sm"
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                {isFilterActive ? 'Hasil Carian' : 'Semua Rekod'}
-              </h2>
-              <span className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded-full">{filteredTransactions.length} item</span>
-            </div>
-
-            <div className="space-y-3">
-              {filteredTransactions.length === 0 ? (
-                <div className="text-center py-10 opacity-50 bg-muted/20 rounded-3xl border-2 border-dashed">
-                  <Smartphone className="w-10 h-10 mx-auto mb-2" />
-                  <p className="text-sm font-medium">Tiada rekod dijumpai</p>
-                </div>
-              ) : (
-                filteredTransactions.map((tx) => (
-                  <Card 
-                    key={tx.id} 
-                    className="border-none shadow-sm rounded-2xl overflow-hidden p-4 flex items-center gap-4 cursor-pointer active:scale-95 transition-transform bg-card"
-                    onClick={() => handleEditTx(tx)}
-                  >
-                    <div className={`p-3 rounded-2xl ${tx.type === 'in' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
-                      {tx.type === 'in' ? <ArrowUpCircle className="w-6 h-6" /> : <ArrowDownCircle className="w-6 h-6" />}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start mb-1">
-                        <h3 className="font-bold text-sm truncate">{tx.category}</h3>
-                        <span className={`font-black text-sm ${tx.type === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                          {tx.type === 'in' ? '+' : '-'}RM{tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-end">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                            <Wallet className="w-3 h-3" /> {tx.method}
-                            <span className="mx-1">•</span>
-                            {format(tx.timestamp.toDate(), "MMM dd, hh:mm a")}
-                          </span>
-                          {tx.description && <p className="text-[10px] text-muted-foreground italic truncate">{tx.description}</p>}
-                        </div>
-                        <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full font-bold text-muted-foreground">
-                          {isFilterActive ? 'Baki Sejarah' : 'Baki'}: RM{tx.runningBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                    </div>
-                  </Card>
-                ))
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="analytics" className="space-y-6">
-            <div className="bg-card p-6 rounded-[2rem] shadow-sm space-y-6">
-              <div className="flex flex-col gap-1 border-b border-dashed pb-4">
-                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                  <TrendingDown className="w-4 h-4 text-rose-500" />
-                  Pecahan Perbelanjaan
-                </h3>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-black">RM{totalExpenseSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase">Jumlah (Keluar)</span>
-                </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column: Balance & Stats */}
+          <div className="space-y-6">
+            <Card className="bg-primary text-white border-none shadow-2xl rounded-[3rem] p-10">
+              <div className="flex flex-col items-center gap-2 text-center mb-10">
+                <span className="text-xs font-bold opacity-70 uppercase tracking-widest">
+                  {isFilterActive ? 'Baki (Ditapis)' : 'Baki Bersih'}
+                </span>
+                <span className="text-5xl font-black tracking-tighter">
+                  RM{filteredStats.net.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
               </div>
               
-              {categoryStats.length === 0 ? (
-                <p className="text-center py-10 text-sm text-muted-foreground italic">Tiada data perbelanjaan untuk dipaparkan.</p>
-              ) : (
-                <div className="space-y-6">
-                  {categoryStats.map((stat) => (
-                    <div key={stat.name} className="space-y-2">
-                      <div className="flex justify-between items-end">
-                        <span className="text-sm font-bold">{stat.name}</span>
-                        <div className="text-right">
-                          <span className="text-xs font-black">RM{stat.value.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                          <span className="text-[10px] text-muted-foreground ml-2">({stat.percentage.toFixed(0)}%)</span>
-                        </div>
-                      </div>
-                      <Progress value={stat.percentage} className="h-2 rounded-full" />
-                    </div>
-                  ))}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/10 rounded-[2rem] p-5 flex flex-col items-center">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                    <span className="text-[10px] uppercase font-bold opacity-70">Masuk</span>
+                  </div>
+                  <span className="text-lg font-black truncate">RM{filteredStats.totalIn.toLocaleString()}</span>
                 </div>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
+                <div className="bg-white/10 rounded-[2rem] p-5 flex flex-col items-center">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-2.5 h-2.5 rounded-full bg-rose-400" />
+                    <span className="text-[10px] uppercase font-bold opacity-70">Keluar</span>
+                  </div>
+                  <span className="text-lg font-black truncate">RM{filteredStats.totalOut.toLocaleString()}</span>
+                </div>
+              </div>
+            </Card>
 
-      {/* Floating Action Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 p-6 flex gap-4 max-w-md mx-auto bg-gradient-to-t from-background via-background to-transparent pointer-events-none">
-        <Button 
-          className="flex-1 h-14 rounded-2xl shadow-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-lg flex gap-2 pointer-events-auto transition-transform active:scale-95"
-          onClick={() => { setTxType('in'); setEditingTx(null); setIsTxModalOpen(true); }}
-        >
-          <Plus className="w-6 h-6" /> Masuk
-        </Button>
-        <Button 
-          className="flex-1 h-14 rounded-2xl shadow-lg bg-rose-500 hover:bg-rose-600 text-white font-bold text-lg flex gap-2 pointer-events-auto transition-transform active:scale-95"
-          onClick={() => { setTxType('out'); setEditingTx(null); setIsTxModalOpen(true); }}
-        >
-          <ArrowDownCircle className="w-6 h-6" /> Keluar
-        </Button>
-      </div>
+            <div className="hidden lg:block">
+               <Card className="border-none shadow-sm rounded-[2.5rem] bg-card p-8 space-y-8">
+                  <div className="flex flex-col gap-1 border-b border-dashed pb-4">
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                      <TrendingDown className="w-4 h-4 text-rose-500" />
+                      Pecahan Perbelanjaan
+                    </h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-black">RM{totalExpenseSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
+                  
+                  {categoryStats.length === 0 ? (
+                    <p className="text-center py-10 text-sm text-muted-foreground italic">Tiada data perbelanjaan.</p>
+                  ) : (
+                    <div className="space-y-6">
+                      {categoryStats.map((stat) => (
+                        <div key={stat.name} className="space-y-2">
+                          <div className="flex justify-between items-end">
+                            <span className="text-sm font-bold">{stat.name}</span>
+                            <div className="text-right">
+                              <span className="text-xs font-black">RM{stat.value.toLocaleString()}</span>
+                              <span className="text-[10px] text-muted-foreground ml-2">({stat.percentage.toFixed(0)}%)</span>
+                            </div>
+                          </div>
+                          <Progress value={stat.percentage} className="h-2 rounded-full" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+               </Card>
+            </div>
+          </div>
+
+          {/* Right Column: Transactions & Search (Mobile Tabs) */}
+          <div className="lg:col-span-2">
+            <Tabs defaultValue="transactions" className="w-full">
+              <TabsList className="lg:hidden grid w-full grid-cols-2 rounded-2xl h-12 bg-muted/50 p-1 mb-6">
+                <TabsTrigger value="transactions" className="rounded-xl font-bold flex gap-2">
+                  <History className="w-4 h-4" /> Transaksi
+                </TabsTrigger>
+                <TabsTrigger value="analytics" className="rounded-xl font-bold flex gap-2">
+                  <PieChartIcon className="w-4 h-4" /> Analisis
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="transactions" className="space-y-6">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input 
+                      placeholder="Cari kategori atau catatan..." 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-12 h-14 rounded-2xl border-none bg-card shadow-sm"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      className="h-14 px-6 rounded-2xl bg-emerald-500 hover:bg-emerald-600 font-bold flex gap-2 flex-1"
+                      onClick={() => { setTxType('in'); setEditingTx(null); setIsTxModalOpen(true); }}
+                    >
+                      <Plus className="w-5 h-5" /> Masuk
+                    </Button>
+                    <Button 
+                      className="h-14 px-6 rounded-2xl bg-rose-500 hover:bg-rose-600 font-bold flex gap-2 flex-1"
+                      onClick={() => { setTxType('out'); setEditingTx(null); setIsTxModalOpen(true); }}
+                    >
+                      <ArrowDownCircle className="w-5 h-5" /> Keluar
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground">
+                    {isFilterActive ? 'Hasil Carian' : 'Rekod Terkini'}
+                  </h2>
+                  <span className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded-full">{filteredTransactions.length} item</span>
+                </div>
+
+                <div className="grid gap-4">
+                  {filteredTransactions.length === 0 ? (
+                    <div className="text-center py-20 opacity-50 bg-muted/20 rounded-[3rem] border-2 border-dashed">
+                      <Smartphone className="w-12 h-12 mx-auto mb-3" />
+                      <p className="font-bold">Tiada rekod dijumpai</p>
+                    </div>
+                  ) : (
+                    filteredTransactions.map((tx) => (
+                      <Card 
+                        key={tx.id} 
+                        className="border-none shadow-sm rounded-3xl overflow-hidden p-5 flex items-center gap-5 cursor-pointer hover:shadow-md transition-all bg-card"
+                        onClick={() => handleEditTx(tx)}
+                      >
+                        <div className={`p-4 rounded-2xl ${tx.type === 'in' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                          {tx.type === 'in' ? <ArrowUpCircle className="w-6 h-6" /> : <ArrowDownCircle className="w-6 h-6" />}
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start mb-1">
+                            <h3 className="font-black text-base truncate">{tx.category}</h3>
+                            <span className={`font-black text-lg ${tx.type === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                              {tx.type === 'in' ? '+' : '-'}RM{tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-end">
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[11px] text-muted-foreground flex items-center gap-1 font-medium">
+                                <Wallet className="w-3.5 h-3.5" /> {tx.method}
+                                <span className="mx-1">•</span>
+                                {format(tx.timestamp.toDate(), "MMM dd, hh:mm a")}
+                              </span>
+                              {tx.description && <p className="text-xs text-muted-foreground italic truncate max-w-[200px]">{tx.description}</p>}
+                            </div>
+                            <span className="text-[10px] bg-muted px-3 py-1 rounded-full font-bold text-muted-foreground">
+                              Baki: RM{tx.runningBalance.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="analytics" className="lg:hidden">
+                 <Card className="border-none shadow-sm rounded-[2.5rem] bg-card p-8 space-y-8">
+                    <div className="flex flex-col gap-1 border-b border-dashed pb-4">
+                      <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                        <TrendingDown className="w-4 h-4 text-rose-500" />
+                        Pecahan Perbelanjaan
+                      </h3>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-black">RM{totalExpenseSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+                    
+                    {categoryStats.length === 0 ? (
+                      <p className="text-center py-10 text-sm text-muted-foreground italic">Tiada data perbelanjaan.</p>
+                    ) : (
+                      <div className="space-y-6">
+                        {categoryStats.map((stat) => (
+                          <div key={stat.name} className="space-y-2">
+                            <div className="flex justify-between items-end">
+                              <span className="text-sm font-bold">{stat.name}</span>
+                              <div className="text-right">
+                                <span className="text-xs font-black">RM{stat.value.toLocaleString()}</span>
+                                <span className="text-[10px] text-muted-foreground ml-2">({stat.percentage.toFixed(0)}%)</span>
+                              </div>
+                            </div>
+                            <Progress value={stat.percentage} className="h-2 rounded-full" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                 </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      </main>
 
       <TransactionModal 
         isOpen={isTxModalOpen} 

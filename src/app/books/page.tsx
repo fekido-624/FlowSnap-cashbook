@@ -5,12 +5,13 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { subscribeToBooks, createBook, Book } from "@/lib/services/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Plus, BookOpen, LogOut, ChevronRight, Wallet, User, ListChecks, LayoutDashboard, Settings } from "lucide-react";
+import { Plus, BookOpen, LogOut, ChevronRight, Wallet, ListChecks, User } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Sidebar } from "@/components/Sidebar";
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export default function BooksPage() {
   const { user, loading, logout } = useAuth();
@@ -19,7 +20,6 @@ export default function BooksPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -52,29 +52,8 @@ export default function BooksPage() {
 
   return (
     <div className="min-h-svh bg-background flex flex-col md:flex-row">
-      {/* Sidebar - Desktop Only */}
-      <aside className="hidden md:flex w-64 flex-col bg-card border-r sticky top-0 h-svh p-6">
-        <div className="flex items-center gap-3 mb-10 px-2">
-          <div className="bg-primary p-2 rounded-xl">
-            <BookOpen className="w-6 h-6 text-white" />
-          </div>
-          <h1 className="text-xl font-black text-primary">BukuAkaun</h1>
-        </div>
+      <Sidebar />
 
-        <nav className="flex-1 space-y-2">
-          <SidebarLink href="/books" icon={<LayoutDashboard />} label="Dashboard" active={pathname === '/books'} />
-          <SidebarLink href="/checklists" icon={<ListChecks />} label="Checklists" active={pathname === '/checklists'} />
-          <SidebarLink href="/profile" icon={<User />} label="Profil" active={pathname === '/profile'} />
-        </nav>
-
-        <div className="pt-6 border-t">
-          <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive" onClick={logout}>
-            <LogOut className="w-4 h-4" /> Log Keluar
-          </Button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
       <main className="flex-1 p-6 md:p-10 pb-32 md:pb-10 max-w-7xl mx-auto w-full">
         {/* Mobile Header */}
         <header className="flex md:hidden justify-between items-center mb-8">
@@ -89,11 +68,10 @@ export default function BooksPage() {
           </Button>
         </header>
 
-        {/* Page Content */}
         <div className="space-y-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h2 className="text-3xl font-black tracking-tight">Buku Akaun</h2>
+              <h2 className="text-3xl font-black tracking-tight text-foreground">Buku Akaun</h2>
               <p className="text-muted-foreground text-sm">Urus dan pantau aliran tunai anda di sini.</p>
             </div>
 
@@ -196,21 +174,5 @@ export default function BooksPage() {
         </nav>
       </div>
     </div>
-  );
-}
-
-function SidebarLink({ href, icon, label, active }: { href: string; icon: React.ReactNode; label: string; active: boolean }) {
-  return (
-    <Link 
-      href={href} 
-      className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all font-bold ${
-        active 
-          ? 'bg-primary text-white shadow-lg shadow-primary/20' 
-          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-      }`}
-    >
-      <span className="[&_svg]:w-5 [&_svg]:h-5">{icon}</span>
-      {label}
-    </Link>
   );
 }
