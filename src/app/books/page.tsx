@@ -5,12 +5,12 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { subscribeToBooks, createBook, Book } from "@/lib/services/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Plus, BookOpen, LogOut, ChevronRight, Wallet, User, ListChecks } from "lucide-react";
+import { Plus, BookOpen, LogOut, ChevronRight, Wallet, User, ListChecks, LayoutDashboard, Settings } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 export default function BooksPage() {
   const { user, loading, logout } = useAuth();
@@ -19,6 +19,7 @@ export default function BooksPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -50,107 +51,139 @@ export default function BooksPage() {
   if (loading || !user) return null;
 
   return (
-    <div className="max-w-md mx-auto min-h-svh pb-24 pt-6 px-6 flex flex-col gap-6">
-      <header className="flex justify-between items-center">
-        <Link href="/profile" className="flex items-center gap-2 group transition-transform active:scale-95">
-          <div className="bg-primary p-2 rounded-lg group-hover:shadow-md transition-all">
-            <User className="w-5 h-5 text-white" />
+    <div className="min-h-svh bg-background flex flex-col md:flex-row">
+      {/* Sidebar - Desktop Only */}
+      <aside className="hidden md:flex w-64 flex-col bg-card border-r sticky top-0 h-svh p-6">
+        <div className="flex items-center gap-3 mb-10 px-2">
+          <div className="bg-primary p-2 rounded-xl">
+            <BookOpen className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-xl font-bold text-primary">BukuAkaun</h1>
-        </Link>
-        <Button variant="ghost" size="icon" onClick={logout} className="rounded-full">
-          <LogOut className="w-5 h-5" />
-        </Button>
-      </header>
-
-      <section className="space-y-4">
-        <div className="flex items-end justify-between">
-          <h2 className="text-2xl font-bold">Buku Akaun</h2>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="rounded-full flex gap-1 h-9">
-                <Plus className="w-4 h-4" /> Buku Baru
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="rounded-3xl max-w-[90vw] sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Cipta Buku Baru</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="book-name">Nama Buku</Label>
-                  <Input 
-                    id="book-name" 
-                    placeholder="e.g. Belanja Rumah, Bisnes" 
-                    value={newBookName}
-                    onChange={(e) => setNewBookName(e.target.value)}
-                    className="rounded-xl h-12"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button className="w-full h-12 rounded-xl font-bold" onClick={handleCreateBook} disabled={isCreating}>
-                  {isCreating ? "Mencipta..." : "Simpan Buku"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <h1 className="text-xl font-black text-primary">BukuAkaun</h1>
         </div>
 
-        <div className="grid gap-4">
-          {books.length === 0 ? (
-            <div className="text-center py-12 px-4 bg-muted/30 rounded-3xl border-2 border-dashed">
-              <Wallet className="w-12 h-12 mx-auto text-muted-foreground mb-4 opacity-50" />
-              <p className="text-muted-foreground font-medium text-sm">Belum ada buku lagi.</p>
+        <nav className="flex-1 space-y-2">
+          <SidebarLink href="/books" icon={<LayoutDashboard />} label="Dashboard" active={pathname === '/books'} />
+          <SidebarLink href="/checklists" icon={<ListChecks />} label="Checklists" active={pathname === '/checklists'} />
+          <SidebarLink href="/profile" icon={<User />} label="Profil" active={pathname === '/profile'} />
+        </nav>
+
+        <div className="pt-6 border-t">
+          <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive" onClick={logout}>
+            <LogOut className="w-4 h-4" /> Log Keluar
+          </Button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 p-6 md:p-10 pb-32 md:pb-10 max-w-7xl mx-auto w-full">
+        {/* Mobile Header */}
+        <header className="flex md:hidden justify-between items-center mb-8">
+          <div className="flex items-center gap-2">
+            <div className="bg-primary p-2 rounded-lg">
+              <BookOpen className="w-5 h-5 text-white" />
             </div>
-          ) : (
-            books.map((book) => (
-              <Link key={book.id} href={`/books/${book.id}`}>
-                <Card className="hover:shadow-lg transition-shadow border-none shadow-sm rounded-2xl overflow-hidden group">
-                  <CardHeader className="p-5 flex flex-row items-center justify-between space-y-0">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-primary/10 p-2.5 rounded-xl group-hover:bg-primary/20 transition-colors">
-                        <BookOpen className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="flex flex-col">
-                        <CardTitle className="text-lg font-bold">{book.name}</CardTitle>
-                        <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-                          Dicipta {book.createdAt?.toDate ? book.createdAt.toDate().toLocaleDateString() : 'baru-baru ini'}
-                        </span>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
-                  </CardHeader>
-                  <CardContent className="p-5 pt-0">
-                    <div className="flex items-center justify-between bg-muted/30 rounded-xl p-3">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Baki</span>
-                        <span className={`text-lg font-bold ${book.netBalance >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                          RM{book.netBalance.toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex gap-4 text-right">
-                        <div className="flex flex-col">
-                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Masuk</span>
-                          <span className="text-xs font-semibold text-emerald-600">RM{book.totalCashIn.toLocaleString()}</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Keluar</span>
-                          <span className="text-xs font-semibold text-rose-600">RM{book.totalCashOut.toLocaleString()}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))
-          )}
-        </div>
-      </section>
+            <h1 className="text-xl font-bold text-primary">BukuAkaun</h1>
+          </div>
+          <Button variant="ghost" size="icon" onClick={logout} className="rounded-full">
+            <LogOut className="w-5 h-5" />
+          </Button>
+        </header>
 
-      {/* Footer Nav */}
-      <div className="fixed bottom-6 left-6 right-6 max-w-md mx-auto">
-        <nav className="bg-white/80 backdrop-blur-lg border border-white shadow-2xl rounded-full p-2 flex justify-around items-center">
+        {/* Page Content */}
+        <div className="space-y-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-3xl font-black tracking-tight">Buku Akaun</h2>
+              <p className="text-muted-foreground text-sm">Urus dan pantau aliran tunai anda di sini.</p>
+            </div>
+
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="rounded-2xl flex gap-2 h-12 px-6 shadow-lg shadow-primary/20">
+                  <Plus className="w-5 h-5" /> Buku Baru
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="rounded-3xl max-w-[90vw] sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Cipta Buku Baru</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="book-name">Nama Buku</Label>
+                    <Input 
+                      id="book-name" 
+                      placeholder="e.g. Belanja Rumah, Bisnes" 
+                      value={newBookName}
+                      onChange={(e) => setNewBookName(e.target.value)}
+                      className="rounded-xl h-12"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button className="w-full h-12 rounded-xl font-bold" onClick={handleCreateBook} disabled={isCreating}>
+                    {isCreating ? "Mencipta..." : "Simpan Buku"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {books.length === 0 ? (
+              <div className="col-span-full text-center py-20 px-4 bg-muted/20 rounded-[2.5rem] border-2 border-dashed border-muted">
+                <Wallet className="w-16 h-16 mx-auto text-muted-foreground mb-4 opacity-30" />
+                <h3 className="text-lg font-bold">Belum ada buku lagi</h3>
+                <p className="text-muted-foreground text-sm max-w-xs mx-auto">Klik butang 'Buku Baru' untuk mula merekod transaksi anda.</p>
+              </div>
+            ) : (
+              books.map((book) => (
+                <Link key={book.id} href={`/books/${book.id}`} className="group">
+                  <Card className="h-full hover:shadow-xl transition-all border-none shadow-sm rounded-[2rem] overflow-hidden bg-card active:scale-[0.98]">
+                    <CardHeader className="p-6 flex flex-row items-center justify-between space-y-0">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-primary/10 p-3 rounded-2xl group-hover:bg-primary/20 transition-colors">
+                          <BookOpen className="w-6 h-6 text-primary" />
+                        </div>
+                        <div className="flex flex-col">
+                          <CardTitle className="text-lg font-black truncate max-w-[150px]">{book.name}</CardTitle>
+                          <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+                            Dicipta {book.createdAt?.toDate ? book.createdAt.toDate().toLocaleDateString() : 'Baru'}
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                    </CardHeader>
+                    <CardContent className="p-6 pt-0">
+                      <div className="bg-muted/30 rounded-3xl p-5 space-y-4">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Baki Bersih</span>
+                          <span className={`text-2xl font-black ${book.netBalance >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                            RM{book.netBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 border-t border-muted pt-4">
+                          <div className="flex flex-col">
+                            <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Masuk</span>
+                            <span className="text-sm font-bold text-emerald-600">RM{book.totalCashIn.toLocaleString()}</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Keluar</span>
+                            <span className="text-sm font-bold text-rose-600">RM{book.totalCashOut.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))
+            )}
+          </div>
+        </div>
+      </main>
+
+      {/* Mobile Footer Nav */}
+      <div className="md:hidden fixed bottom-6 left-6 right-6 max-w-md mx-auto z-50">
+        <nav className="bg-white/80 backdrop-blur-xl border border-white shadow-2xl rounded-full p-2 flex justify-around items-center">
           <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white shadow-lg shadow-primary/30">
             <BookOpen className="w-6 h-6" />
           </div>
@@ -163,5 +196,21 @@ export default function BooksPage() {
         </nav>
       </div>
     </div>
+  );
+}
+
+function SidebarLink({ href, icon, label, active }: { href: string; icon: React.ReactNode; label: string; active: boolean }) {
+  return (
+    <Link 
+      href={href} 
+      className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all font-bold ${
+        active 
+          ? 'bg-primary text-white shadow-lg shadow-primary/20' 
+          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+      }`}
+    >
+      <span className="[&_svg]:w-5 [&_svg]:h-5">{icon}</span>
+      {label}
+    </Link>
   );
 }
