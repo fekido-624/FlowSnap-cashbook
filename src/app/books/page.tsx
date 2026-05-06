@@ -56,7 +56,7 @@ export default function BooksPage() {
           <div className="bg-primary p-2 rounded-lg">
             <BookOpen className="w-5 h-5 text-white" />
           </div>
-          <h1 className="text-xl font-bold text-primary">FlowSnap</h1>
+          <h1 className="text-xl font-bold text-primary">(BukuAkaun)</h1>
         </div>
         <Button variant="ghost" size="icon" onClick={logout} className="rounded-full">
           <LogOut className="w-5 h-5" />

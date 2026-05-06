@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from '@/lib/contexts/auth-context';
 
 export const metadata: Metadata = {
-  title: 'FlowSnap - Cash Flow Tracking',
+  title: '(BukuAkaun) - Cash Flow Tracking',
   description: 'Smart and elegant cash flow management for your smartphones.',
 };
 

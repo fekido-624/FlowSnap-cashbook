@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -40,7 +39,7 @@ export default function SignupPage() {
         <div className="bg-primary p-2 rounded-xl">
           <BookOpen className="w-6 h-6 text-white" />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-primary">FlowSnap</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">(BukuAkaun)</h1>
       </div>
 
       <Card className="border-none shadow-xl bg-card rounded-[2rem]">
