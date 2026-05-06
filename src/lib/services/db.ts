@@ -186,7 +186,7 @@ export const updateTransaction = async (userId: string, bookId: string, txId: st
   const oldTx = txs[txIndex];
   
   if (oldTx.type === 'in') {
- OldTx    books[bookIndex].netBalance -= oldTx.amount;
+    books[bookIndex].netBalance -= oldTx.amount;
     books[bookIndex].totalCashIn -= oldTx.amount;
   } else {
     books[bookIndex].netBalance += oldTx.amount;
