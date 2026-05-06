@@ -9,8 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { addTransaction, updateTransaction, deleteTransaction, addCategoryToBook, subscribeToBook, Book, Transaction } from "@/lib/services/db";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { suggestCategories } from "@/ai/flows/smart-category-suggestion";
-import { Sparkles, Loader2, Plus, X, Trash2 } from "lucide-react";
+import { Plus, X, Trash2 } from "lucide-react";
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -29,8 +28,6 @@ export function TransactionModal({ isOpen, onClose, type: initialType, bookId, e
   const [description, setDescription] = useState("");
   const [type, setType] = useState<'in' | 'out'>(initialType);
   const [loading, setLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [isSuggesting, setIsSuggesting] = useState(false);
   const [book, setBook] = useState<Book | null>(null);
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -61,27 +58,10 @@ export function TransactionModal({ isOpen, onClose, type: initialType, bookId, e
         setMethod("Cash");
         setType(initialType);
       }
-      setSuggestions([]);
       setIsAddingNewCategory(false);
       setNewCategoryName("");
     }
   }, [isOpen, editingTransaction, initialType]);
-
-  const fetchSuggestions = async (desc: string) => {
-    if (desc.length < 3) return;
-    setIsSuggesting(true);
-    try {
-      const result = await suggestCategories({ 
-        description: desc,
-        existingCategories: book?.customCategories 
-      });
-      setSuggestions(result.suggestedCategories);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSuggesting(false);
-    }
-  };
 
   const handleAddNewCategory = async () => {
     if (!newCategoryName.trim()) return;
@@ -235,43 +215,9 @@ export function TransactionModal({ isOpen, onClose, type: initialType, bookId, e
               placeholder="Untuk apa?" 
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              onBlur={() => fetchSuggestions(description)}
               className="h-12 rounded-xl"
             />
           </div>
-
-          {suggestions.length > 0 && (
-            <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10">
-              <div className="flex items-center gap-1.5 mb-2 text-primary">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span className="text-[10px] uppercase font-black tracking-widest">Cadangan Pintar AI</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {suggestions.map((s) => (
-                  <Button 
-                    key={s} 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
-                    className="rounded-full text-[10px] h-7 px-3 bg-white border-primary/20 hover:bg-primary hover:text-white transition-colors"
-                    onClick={async () => {
-                      await addCategoryToBook(bookId, s);
-                      setCategory(s);
-                    }}
-                  >
-                    {s}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {isSuggesting && (
-             <div className="flex items-center justify-center gap-2 py-2 text-primary">
-               <Loader2 className="w-4 h-4 animate-spin" />
-               <span className="text-xs font-medium">Menganalisis catatan...</span>
-             </div>
-          )}
 
           <DialogFooter className="pt-4 flex flex-col gap-3">
             <Button 
