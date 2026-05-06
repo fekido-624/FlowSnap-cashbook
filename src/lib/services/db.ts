@@ -1,4 +1,3 @@
-
 // Implementasi Mock DB menggunakan localStorage
 export interface Book {
   id: string;
@@ -8,6 +7,7 @@ export interface Book {
   netBalance: number;
   totalCashIn: number;
   totalCashOut: number;
+  customCategories: string[];
 }
 
 export interface Transaction {
@@ -22,6 +22,8 @@ export interface Transaction {
   timestamp: { toDate: () => Date };
   runningBalance: number;
 }
+
+const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Shopping", "Others", "Salary", "Investment"];
 
 const getLocalBooks = (): Book[] => {
   if (typeof window === 'undefined') return [];
@@ -50,11 +52,23 @@ export const createBook = async (userId: string, name: string) => {
     createdAt: { toDate: () => new Date() },
     netBalance: 0,
     totalCashIn: 0,
-    totalCashOut: 0
+    totalCashOut: 0,
+    customCategories: [...DEFAULT_CATEGORIES]
   };
   books.unshift(newBook);
   setLocalBooks(books);
   return newBook;
+};
+
+export const addCategoryToBook = async (bookId: string, category: string) => {
+  const books = getLocalBooks();
+  const index = books.findIndex(b => b.id === bookId);
+  if (index !== -1) {
+    if (!books[index].customCategories.includes(category)) {
+      books[index].customCategories.push(category);
+      setLocalBooks(books);
+    }
+  }
 };
 
 export const subscribeToBooks = (userId: string, callback: (books: Book[]) => void) => {

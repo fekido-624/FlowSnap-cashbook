@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -39,7 +38,6 @@ export default function BookDetailPage() {
 
   useEffect(() => {
     if (id) {
-      // Menggunakan langganan tempatan (local subscription)
       const unsubBook = subscribeToBook(id, (data) => {
         setBook(data);
       });
@@ -190,6 +188,7 @@ export default function BookDetailPage() {
         onClose={() => setIsFilterOpen(false)}
         currentFilter={filter}
         onApply={setFilter}
+        bookId={id}
       />
     </div>
   );

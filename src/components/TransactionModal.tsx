@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addTransaction } from "@/lib/services/db";
+import { addTransaction, addCategoryToBook, subscribeToBook, Book } from "@/lib/services/db";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { suggestCategories } from "@/ai/flows/smart-category-suggestion";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, Plus, X } from "lucide-react";
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -29,6 +29,16 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isSuggesting, setIsSuggesting] = useState(false);
+  const [book, setBook] = useState<Book | null>(null);
+  const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+
+  useEffect(() => {
+    if (bookId) {
+      const unsub = subscribeToBook(bookId, (data) => setBook(data));
+      return () => unsub();
+    }
+  }, [bookId]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -36,6 +46,8 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
       setCategory("");
       setDescription("");
       setSuggestions([]);
+      setIsAddingNewCategory(false);
+      setNewCategoryName("");
     }
   }, [isOpen]);
 
@@ -50,6 +62,15 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
     } finally {
       setIsSuggesting(false);
     }
+  };
+
+  const handleAddNewCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    await addCategoryToBook(bookId, newCategoryName.trim());
+    setCategory(newCategoryName.trim());
+    setNewCategoryName("");
+    setIsAddingNewCategory(false);
+    toast({ title: "Category Added", description: `"${newCategoryName}" has been added to this book.` });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -114,13 +135,55 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
             </div>
             <div className="space-y-2">
               <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Category</Label>
-              <Input 
-                placeholder="e.g. Food" 
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                required
-                className="h-12 rounded-xl"
-              />
+              {!isAddingNewCategory ? (
+                <div className="flex gap-2">
+                  <Select value={category} onValueChange={(v) => setCategory(v)}>
+                    <SelectTrigger className="h-12 rounded-xl flex-1">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {book?.customCategories.map((cat) => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="icon" 
+                    className="h-12 w-12 rounded-xl"
+                    onClick={() => setIsAddingNewCategory(true)}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="New..." 
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    className="h-12 rounded-xl flex-1"
+                    autoFocus
+                  />
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-12 w-12 rounded-xl"
+                    onClick={() => setIsAddingNewCategory(false)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    type="button" 
+                    className="h-12 w-12 rounded-xl"
+                    onClick={handleAddNewCategory}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -149,7 +212,10 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
                     variant="outline" 
                     size="sm" 
                     className="rounded-full text-[10px] h-7 px-3 bg-white border-primary/20 hover:bg-primary hover:text-white transition-colors"
-                    onClick={() => setCategory(s)}
+                    onClick={async () => {
+                      await addCategoryToBook(bookId, s);
+                      setCategory(s);
+                    }}
                   >
                     {s}
                   </Button>
@@ -169,7 +235,7 @@ export function TransactionModal({ isOpen, onClose, type, bookId }: TransactionM
             <Button 
               type="submit" 
               className={`w-full h-14 rounded-2xl text-lg font-bold shadow-lg ${type === 'in' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-rose-500 hover:bg-rose-600'}`}
-              disabled={loading}
+              disabled={loading || !category}
             >
               {loading ? "Processing..." : "Save Transaction"}
             </Button>

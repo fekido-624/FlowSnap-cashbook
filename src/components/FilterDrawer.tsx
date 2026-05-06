@@ -4,17 +4,27 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/com
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { subscribeToBook, Book } from "@/lib/services/db";
 
 interface FilterDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   currentFilter: any;
   onApply: (filter: any) => void;
+  bookId: string;
 }
 
-export function FilterDrawer({ isOpen, onClose, currentFilter, onApply }: FilterDrawerProps) {
+export function FilterDrawer({ isOpen, onClose, currentFilter, onApply, bookId }: FilterDrawerProps) {
   const [filter, setFilter] = useState(currentFilter);
+  const [book, setBook] = useState<Book | null>(null);
+
+  useEffect(() => {
+    if (bookId) {
+      const unsub = subscribeToBook(bookId, (data) => setBook(data));
+      return () => unsub();
+    }
+  }, [bookId]);
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -45,11 +55,9 @@ export function FilterDrawer({ isOpen, onClose, currentFilter, onApply }: Filter
               </SelectTrigger>
               <SelectContent className="rounded-xl">
                 <SelectItem value="All">All Categories</SelectItem>
-                <SelectItem value="Food">Food</SelectItem>
-                <SelectItem value="Transport">Transport</SelectItem>
-                <SelectItem value="Entertainment">Entertainment</SelectItem>
-                <SelectItem value="Shopping">Shopping</SelectItem>
-                <SelectItem value="Others">Others</SelectItem>
+                {book?.customCategories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
