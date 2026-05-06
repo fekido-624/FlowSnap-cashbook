@@ -1,11 +1,10 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/contexts/auth-context";
-import { db } from "@/lib/firebase";
-import { doc, onSnapshot } from "firebase/firestore";
-import { subscribeToTransactions, addTransaction, Book, Transaction } from "@/lib/services/db";
+import { subscribeToTransactions, subscribeToBook, Book, Transaction } from "@/lib/services/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { 
@@ -15,11 +14,9 @@ import {
   Filter, 
   Plus, 
   History, 
-  MoreVertical,
   Calendar,
   Wallet,
-  Smartphone,
-  Tag
+  Smartphone
 } from "lucide-react";
 import { TransactionModal } from "@/components/TransactionModal";
 import { FilterDrawer } from "@/components/FilterDrawer";
@@ -42,10 +39,9 @@ export default function BookDetailPage() {
 
   useEffect(() => {
     if (id) {
-      const unsubBook = onSnapshot(doc(db, "books", id), (doc) => {
-        if (doc.exists()) {
-          setBook({ id: doc.id, ...doc.data() } as Book);
-        }
+      // Menggunakan langganan tempatan (local subscription)
+      const unsubBook = subscribeToBook(id, (data) => {
+        setBook(data);
       });
 
       const unsubTxs = subscribeToTransactions(id, {}, (data) => {
@@ -63,12 +59,15 @@ export default function BookDetailPage() {
     return transactions.filter(tx => {
       const matchMethod = filter.method === 'All' || tx.method === filter.method;
       const matchCategory = filter.category === 'All' || tx.category === filter.category;
-      // Date range filtering can be added here
       return matchMethod && matchCategory;
     });
   }, [transactions, filter]);
 
-  if (!book) return null;
+  if (!book) return (
+    <div className="flex items-center justify-center h-svh">
+      <p className="text-muted-foreground animate-pulse">Memuatkan buku...</p>
+    </div>
+  );
 
   return (
     <div className="max-w-md mx-auto min-h-svh flex flex-col bg-background pb-32">
@@ -88,9 +87,9 @@ export default function BookDetailPage() {
         {/* Balance Card */}
         <Card className="bg-primary text-white border-none shadow-xl rounded-[2.5rem] p-8">
           <div className="flex flex-col items-center gap-1 text-center mb-8">
-            <span className="text-sm font-medium opacity-80 uppercase tracking-widest">Net Balance</span>
+            <span className="text-sm font-medium opacity-80 uppercase tracking-widest">Baki Bersih</span>
             <span className="text-5xl font-black tracking-tighter">
-              ${book.netBalance.toLocaleString()}
+              RM{book.netBalance.toLocaleString()}
             </span>
           </div>
           
@@ -98,16 +97,16 @@ export default function BookDetailPage() {
             <div className="bg-white/10 rounded-3xl p-4 flex flex-col items-center">
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span className="text-[10px] uppercase font-bold opacity-70">Cash In</span>
+                <span className="text-[10px] uppercase font-bold opacity-70">Masuk</span>
               </div>
-              <span className="text-lg font-bold truncate">${book.totalCashIn.toLocaleString()}</span>
+              <span className="text-lg font-bold truncate">RM{book.totalCashIn.toLocaleString()}</span>
             </div>
             <div className="bg-white/10 rounded-3xl p-4 flex flex-col items-center">
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-2 h-2 rounded-full bg-rose-400" />
-                <span className="text-[10px] uppercase font-bold opacity-70">Cash Out</span>
+                <span className="text-[10px] uppercase font-bold opacity-70">Keluar</span>
               </div>
-              <span className="text-lg font-bold truncate">${book.totalCashOut.toLocaleString()}</span>
+              <span className="text-lg font-bold truncate">RM{book.totalCashOut.toLocaleString()}</span>
             </div>
           </div>
         </Card>
@@ -117,16 +116,16 @@ export default function BookDetailPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold flex items-center gap-2">
               <History className="w-5 h-5 text-primary" />
-              Recent Transactions
+              Transaksi Terkini
             </h2>
-            <span className="text-xs text-muted-foreground font-medium">{filteredTransactions.length} items</span>
+            <span className="text-xs text-muted-foreground font-medium">{filteredTransactions.length} item</span>
           </div>
 
           <div className="space-y-3">
             {filteredTransactions.length === 0 ? (
               <div className="text-center py-10 opacity-50">
                 <Smartphone className="w-10 h-10 mx-auto mb-2" />
-                <p className="text-sm">No transactions found</p>
+                <p className="text-sm">Tiada transaksi dijumpai</p>
               </div>
             ) : (
               filteredTransactions.map((tx) => (
@@ -139,7 +138,7 @@ export default function BookDetailPage() {
                     <div className="flex justify-between items-start mb-1">
                       <h3 className="font-bold text-sm truncate">{tx.category}</h3>
                       <span className={`font-black text-sm ${tx.type === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {tx.type === 'in' ? '+' : '-'}${tx.amount.toLocaleString()}
+                        {tx.type === 'in' ? '+' : '-'}RM{tx.amount.toLocaleString()}
                       </span>
                     </div>
                     <div className="flex justify-between items-end">
@@ -152,7 +151,7 @@ export default function BookDetailPage() {
                         {tx.description && <p className="text-[10px] text-muted-foreground italic truncate">{tx.description}</p>}
                       </div>
                       <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full font-bold text-muted-foreground">
-                        Bal: ${tx.runningBalance.toLocaleString()}
+                        Bal: RM{tx.runningBalance.toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -169,13 +168,13 @@ export default function BookDetailPage() {
           className="flex-1 h-14 rounded-2xl shadow-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-lg flex gap-2 pointer-events-auto transition-transform active:scale-95"
           onClick={() => { setTxType('in'); setIsTxModalOpen(true); }}
         >
-          <Plus className="w-6 h-6" /> Cash In
+          <Plus className="w-6 h-6" /> Masuk
         </Button>
         <Button 
           className="flex-1 h-14 rounded-2xl shadow-lg bg-rose-500 hover:bg-rose-600 text-white font-bold text-lg flex gap-2 pointer-events-auto transition-transform active:scale-95"
           onClick={() => { setTxType('out'); setIsTxModalOpen(true); }}
         >
-          <ArrowDownCircle className="w-6 h-6" /> Cash Out
+          <ArrowDownCircle className="w-6 h-6" /> Keluar
         </Button>
       </div>
 

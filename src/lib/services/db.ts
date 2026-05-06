@@ -1,5 +1,5 @@
 
-// Mock implementation of DB services using localStorage
+// Implementasi Mock DB menggunakan localStorage
 export interface Book {
   id: string;
   name: string;
@@ -67,13 +67,24 @@ export const subscribeToBooks = (userId: string, callback: (books: Book[]) => vo
   return () => clearInterval(interval);
 };
 
+export const subscribeToBook = (bookId: string, callback: (book: Book | null) => void) => {
+  const update = () => {
+    const books = getLocalBooks();
+    const book = books.find(b => b.id === bookId) || null;
+    callback(book);
+  };
+  update();
+  const interval = setInterval(update, 1000);
+  return () => clearInterval(interval);
+};
+
 export const subscribeToTransactions = (bookId: string, filters: any, callback: (txs: Transaction[]) => void) => {
   const update = () => {
     const txs = getLocalTransactions(bookId).map(tx => ({
       ...tx,
       timestamp: { toDate: () => new Date(tx.timestamp as any) }
     }));
-    // Sort by date desc
+    // Susun mengikut tarikh menurun
     txs.sort((a, b) => b.timestamp.toDate().getTime() - a.timestamp.toDate().getTime());
     callback(txs as any);
   };
@@ -85,7 +96,7 @@ export const subscribeToTransactions = (bookId: string, filters: any, callback: 
 export const addTransaction = async (userId: string, bookId: string, data: any) => {
   const books = getLocalBooks();
   const bookIndex = books.findIndex(b => b.id === bookId);
-  if (bookIndex === -1) throw new Error("Book not found");
+  if (bookIndex === -1) throw new Error("Buku tidak dijumpai");
 
   const currentBalance = books[bookIndex].netBalance;
   const newBalance = data.type === 'in' ? currentBalance + data.amount : currentBalance - data.amount;
@@ -96,7 +107,7 @@ export const addTransaction = async (userId: string, bookId: string, data: any) 
     id: Math.random().toString(36).substr(2, 9),
     userId,
     bookId,
-    timestamp: new Date() as any, // Will be parsed back in subscribe
+    timestamp: new Date() as any,
     runningBalance: newBalance
   };
 
