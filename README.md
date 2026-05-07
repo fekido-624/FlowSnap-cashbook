@@ -9,17 +9,23 @@ Aplikasi pengurusan aliran tunai (cash flow) yang moden, ringan, dan fokus kepad
 - **Responsive UI**: Pengalaman pengguna yang lancar pada Mobile (Bottom Nav) dan Desktop (Sidebar).
 - **Multi-User Ready**: Direka untuk menyokong pengasingan data antara pengguna menggunakan Firebase Auth.
 
-## Arahan Push ke Git (Pertama Kali)
+## Arahan Push ke Git (Panduan Langkah Demi Langkah)
 
 Ikuti langkah ini untuk menghantar projek ke GitHub/GitLab anda:
 
-1. **Setup Git Lokal**:
+1. **Setup Git Lokal** (Hanya buat sekali sahaja):
    ```bash
    git init
+   ```
+2. **Tambah Fail ke "Kotak"**:
+   ```bash
    git add .
+   ```
+3. **Kunci "Kotak" dengan Nota**:
+   ```bash
    git commit -m "Update: Sistem Responsif, Dashboard, dan Navigasi baru"
    ```
-2. **Sambungkan & Push**:
+4. **Sambungkan & Hantar (Push)**:
    *(Ganti `<url-repo-anda>` dengan link repository kosong dari GitHub/GitLab anda)*
    ```bash
    git branch -M main
