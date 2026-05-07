@@ -31,32 +31,17 @@ Prisma bertindak sebagai "pemandu" antara kod Next.js dan database.
 - **Migrasi Mudah**: Untuk pindah dari SQLite ke PostgreSQL, anda hanya perlu tukar `provider = "sqlite"` kepada `provider = "postgresql"` dalam fail `schema.prisma`.
 - **Kod UI Selamat**: Kod paparan anda tidak akan berubah langsung walaupun anda tukar database di belakang tabir.
 
-## 4. Seni Bina Data (Data Models)
+## 4. Strategi Deployment ke NAS (TrueNAS Scale)
 
-### A. Book (Buku Akaun)
-- `id`: string
-- `name`: string
-- `userId`: string
-- `netBalance`: number
-- `totalCashIn`: number
-- `totalCashOut`: number
-- `customCategories`: string[]
+### Opsyen A: Hybrid (Firebase Auth + Prisma SQL)
+*   **Cara**: Gunakan Firebase untuk Login, dan Prisma/NAS untuk simpan data kewangan.
+*   **Kelebihan**: Sangat selamat, tak perlu coding sistem security sendiri.
+*   **Kekurangan**: Perlu internet untuk login.
 
-### B. Transaction (Transaksi)
-- `id`: string
-- `bookId`: string
-- `type`: 'in' | 'out'
-- `amount`: number
-- `method`: 'Cash' | 'Online'
-- `category`: string
-- `description`: string
-- `runningBalance`: number
-
-### C. Checklist (Senarai Bayaran)
-- `id`: string
-- `name`: string
-- `bookId`: string
-- `items`: ChecklistItem[]
+### Opsyen B: 100% Local (NextAuth + Prisma SQL)
+*   **Cara**: Gunakan NextAuth dengan Prisma Adapter untuk simpan semua data (termasuk user & password) di dalam NAS anda.
+*   **Kelebihan**: Boleh jalan 100% offline.
+*   **Kekurangan**: Lebih rumit untuk setup dan anda bertanggungjawab sepenuhnya atas keselamatan database password.
 
 ## 5. Logik Sistem Utama
 
