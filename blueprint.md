@@ -13,20 +13,21 @@ FlowSnap (BukuAkaun) adalah aplikasi pengurusan aliran tunai (cash flow) mudah a
   - Fasa 2: Firebase Firestore (Cadangan Utama untuk Real-time & Multi-user dalam Firebase Studio)
   - Fasa 3: **Prisma + SQLite/PostgreSQL** (Pilihan Akhir untuk Self-host di TrueNAS Scale)
 
-## 3. Strategi Database & Migrasi (Self-Hosting di NAS)
+## 3. Kamus Teknikal (Untuk Rujukan Self-Hosting)
 
-### A. Terminologi Database
+### A. Database (Peti Simpanan Data)
 1. **SQLite (The "Lightweight" Choice)**:
-   - Simpan data dalam satu fail `.db`.
+   - Simpan data dalam satu fail `.db` sahaja.
    - Sangat mudah untuk TrueNAS: Cuma simpan fail dalam dataset yang anda mount ke Docker.
-   - Sesuai untuk 1-10 pengguna serentak.
+   - Sesuai untuk kegunaan peribadi atau 1-10 pengguna.
 2. **PostgreSQL (The "Pro" Choice)**:
    - Berjalan sebagai database server (Docker container berasingan).
    - Perlukan port mapping (cth: 5432) dan username/password.
    - Sangat stabil untuk data besar dan akses berbilang pengguna yang tinggi.
 
-### B. Peranan Prisma (The Bridge)
-Prisma bertindak sebagai "pemandu" antara kod Next.js dan database. Jika anda menggunakan Prisma:
+### B. Prisma (The Smart Bridge / ORM)
+Prisma bertindak sebagai "pemandu" antara kod Next.js dan database.
+- **Penterjemah**: Ia menukar kod TypeScript anda kepada bahasa SQL secara automatik.
 - **Migrasi Mudah**: Untuk pindah dari SQLite ke PostgreSQL, anda hanya perlu tukar `provider = "sqlite"` kepada `provider = "postgresql"` dalam fail `schema.prisma`.
 - **Kod UI Selamat**: Kod paparan anda tidak akan berubah langsung walaupun anda tukar database di belakang tabir.
 
@@ -70,4 +71,4 @@ Apabila item di-*tick*:
 ## 6. Strategi Responsive UI
 - Penggunaan sidebar tetap pada desktop dan bottom nav pada mobile.
 - Grid sistem dinamik (1 kolum mobile, 3 kolum desktop).
-- Penggunaan `line-clamp` untuk mengurus tajuk panjang tanpa merosakkan susun atur kad.
+- Penggunaan `line-clamp-2` pada tajuk kad untuk mengelakkan teks terpotong secara hodoh sambil mengekalkan keseragaman saiz kad.
