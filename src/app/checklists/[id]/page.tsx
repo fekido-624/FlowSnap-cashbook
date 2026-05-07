@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -44,6 +43,7 @@ import {
   RotateCcw,
   EyeOff
 } from "lucide-react";
+import { Sidebar } from "@/components/Sidebar";
 import { useToast } from "@/hooks/use-toast";
 import { format, addMonths, startOfMonth } from "date-fns";
 
@@ -99,11 +99,8 @@ export default function ChecklistDetailPage() {
     if (!checklist) return [];
     const monthKey = months[currentSlide].key;
     return checklist.items.filter(item => {
-      // Filter mengikut tarikh aktif
       const isStillValid = !item.validUntil || item.validUntil >= monthKey;
-      // Filter mengikut pengecualian bulanan (Hanya jika tidak tunjuk hidden)
       const isNotExcluded = !item.excludedMonths?.includes(monthKey);
-      
       return isStillValid && isNotExcluded;
     });
   }, [checklist, currentSlide, months]);
@@ -120,17 +117,14 @@ export default function ChecklistDetailPage() {
 
   const stats = useMemo(() => {
     if (!checklist) return { total: 0, paid: 0, pending: 0 };
-    const monthKey = months[currentSlide].key;
-    
-    // Kira statistik hanya untuk item yang tidak dikecualikan
     return filteredItems.reduce((acc, item) => {
       acc.total += item.amount;
-      const isPaid = item.payments?.[monthKey]?.isPaid || false;
+      const isPaid = item.payments?.[currentMonthKey]?.isPaid || false;
       if (isPaid) acc.paid += item.amount;
       else acc.pending += item.amount;
       return acc;
     }, { total: 0, paid: 0, pending: 0 });
-  }, [filteredItems, currentSlide, months]);
+  }, [filteredItems, currentMonthKey]);
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,164 +179,175 @@ export default function ChecklistDetailPage() {
   );
 
   return (
-    <div className="max-w-md mx-auto min-h-svh bg-background pb-32">
-      <header className="p-6 pb-2 flex items-center justify-between sticky top-0 bg-background/80 backdrop-blur-lg z-10">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <h1 className="text-xl font-bold truncate">{checklist.name}</h1>
-        </div>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => {
-            if (confirm("Padam keseluruhan checklist ini? Rekod lama dalam Buku Akaun akan tetap kekal.")) {
-              deleteChecklist(id);
-              router.push("/checklists");
-            }
-          }} 
-          className="rounded-full text-rose-500 hover:bg-rose-50"
-        >
-          <Trash2 className="w-5 h-5" />
-        </Button>
-      </header>
+    <div className="min-h-svh bg-background flex flex-col md:flex-row">
+      <Sidebar />
 
-      <div className="px-6 space-y-6">
-        <div className="flex items-center justify-between bg-primary/5 p-4 rounded-3xl">
-          <Button variant="ghost" size="icon" onClick={() => api?.scrollPrev()} disabled={currentSlide === 0}>
-            <ChevronLeft className="w-6 h-6" />
-          </Button>
-          <div className="text-center">
-            <h2 className="text-lg font-black text-primary">{months[currentSlide].label}</h2>
-            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Swipe untuk tukar bulan</p>
+      <main className="flex-1 p-6 md:p-10 pb-32 md:pb-10 max-w-7xl mx-auto w-full">
+        <header className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h1 className="text-2xl font-black truncate">{checklist.name}</h1>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => api?.scrollNext()} disabled={currentSlide === months.length - 1}>
-            <ChevronRight className="w-6 h-6" />
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => {
+              if (confirm("Padam keseluruhan checklist ini? Rekod lama dalam Buku Akaun akan tetap kekal.")) {
+                deleteChecklist(id);
+                router.push("/checklists");
+              }
+            }} 
+            className="rounded-full text-rose-500 hover:bg-rose-50"
+          >
+            <Trash2 className="w-5 h-5" />
           </Button>
-        </div>
+        </header>
 
-        <Card className="bg-primary text-white border-none shadow-xl rounded-[2.5rem] p-6">
-          <div className="flex flex-col items-center text-center mb-6">
-            <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-1">Komitmen: {months[currentSlide].label}</span>
-            <span className="text-4xl font-black">RM{stats.total.toLocaleString()}</span>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white/10 rounded-2xl p-3 flex flex-col items-center">
-              <span className="text-[8px] font-bold uppercase opacity-60">Selesai</span>
-              <span className="font-bold text-emerald-300">RM{stats.paid.toLocaleString()}</span>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column: Month & Stats */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between bg-primary/5 p-4 rounded-[2rem] border border-primary/10">
+              <Button variant="ghost" size="icon" onClick={() => api?.scrollPrev()} disabled={currentSlide === 0} className="rounded-full">
+                <ChevronLeft className="w-6 h-6" />
+              </Button>
+              <div className="text-center">
+                <h2 className="text-lg font-black text-primary">{months[currentSlide].label}</h2>
+                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Pilih Bulan</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => api?.scrollNext()} disabled={currentSlide === months.length - 1} className="rounded-full">
+                <ChevronRight className="w-6 h-6" />
+              </Button>
             </div>
-            <div className="bg-white/10 rounded-2xl p-3 flex flex-col items-center">
-              <span className="text-[8px] font-bold uppercase opacity-60">Tunggakan</span>
-              <span className="font-bold text-rose-300">RM{stats.pending.toLocaleString()}</span>
-            </div>
-          </div>
-        </Card>
 
-        <Carousel setApi={setApi} className="w-full">
-          <CarouselContent>
-            {months.map((month) => (
-              <CarouselItem key={month.key}>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                      <ReceiptText className="w-4 h-4 text-primary" />
-                      SENARAI BULANAN
-                    </h2>
-                    <span className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded-full">{filteredItems.length} ITEM</span>
-                  </div>
-
-                  <div className="space-y-3 min-h-[200px]">
-                    {filteredItems.length === 0 ? (
-                      <div className="text-center py-10 opacity-30 text-xs italic bg-muted/20 rounded-2xl">
-                        Tiada komitmen untuk dipaparkan.
-                      </div>
-                    ) : (
-                      filteredItems.map((item) => (
-                        <ItemRow 
-                          key={item.id} 
-                          item={item} 
-                          userUid={user!.uid} 
-                          checklistId={id} 
-                          monthKey={month.key}
-                          onEdit={() => {
-                            setEditingItem(item);
-                            setEditName(item.name);
-                            setEditAmount(item.amount.toString());
-                          }}
-                          onDelete={() => handleMonthlyDelete(item.id, item.name)}
-                        />
-                      ))
-                    )}
-                  </div>
-
-                  {excludedItems.length > 0 && (
-                    <div className="mt-8 space-y-4 border-t pt-6 border-dashed">
-                       <Button 
-                         variant="ghost" 
-                         size="sm" 
-                         className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
-                         onClick={() => setShowHidden(!showHidden)}
-                       >
-                         {showHidden ? 'Sembunyi' : 'Lihat'} {excludedItems.length} Item Dipadam Bulan Ini
-                       </Button>
-                       
-                       {showHidden && (
-                         <div className="space-y-2 opacity-60">
-                            {excludedItems.map(item => (
-                              <div key={item.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
-                                <span className="text-xs font-medium line-through">{item.name}</span>
-                                <Button variant="ghost" size="sm" onClick={() => handleRestore(item.id)} className="h-7 px-2 text-[10px] font-bold flex gap-1">
-                                  <RotateCcw className="w-3 h-3" /> Pulihkan
-                                </Button>
-                              </div>
-                            ))}
-                         </div>
-                       )}
-                    </div>
-                  )}
+            <Card className="bg-primary text-white border-none shadow-2xl rounded-[2.5rem] p-8">
+              <div className="flex flex-col items-center text-center mb-8">
+                <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-1">Komitmen: {months[currentSlide].label}</span>
+                <span className="text-4xl font-black">RM{stats.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/10 rounded-2xl p-4 flex flex-col items-center">
+                  <span className="text-[9px] font-bold uppercase opacity-60 mb-1">Selesai</span>
+                  <span className="text-lg font-black text-emerald-300">RM{stats.paid.toLocaleString()}</span>
                 </div>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-        </Carousel>
+                <div className="bg-white/10 rounded-2xl p-4 flex flex-col items-center">
+                  <span className="text-[9px] font-bold uppercase opacity-60 mb-1">Tunggakan</span>
+                  <span className="text-lg font-black text-rose-300">RM{stats.pending.toLocaleString()}</span>
+                </div>
+              </div>
+            </Card>
 
-        <form onSubmit={handleAddItem} className="space-y-3 bg-muted/30 p-4 rounded-[2rem] border border-muted mt-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-[10px] font-bold ml-1 text-muted-foreground uppercase tracking-widest">Nama Item</Label>
-              <Input 
-                placeholder="Bil, Sewa..."
-                value={newItemName}
-                onChange={(e) => setNewItemName(e.target.value)}
-                className="h-10 rounded-xl border-none shadow-sm"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[10px] font-bold ml-1 text-muted-foreground uppercase tracking-widest">Harga (RM)</Label>
-              <Input 
-                type="number"
-                placeholder="0.00" 
-                value={newItemAmount}
-                onChange={(e) => setNewItemAmount(e.target.value)}
-                className="h-10 rounded-xl border-none shadow-sm"
-              />
-            </div>
+            <form onSubmit={handleAddItem} className="space-y-4 bg-muted/30 p-6 rounded-[2.5rem] border border-muted">
+              <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Tambah Komitmen</h3>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-bold ml-1 text-muted-foreground uppercase tracking-widest">Nama Item</Label>
+                  <Input 
+                    placeholder="Contoh: Bil Elektrik"
+                    value={newItemName}
+                    onChange={(e) => setNewItemName(e.target.value)}
+                    className="h-12 rounded-xl border-none shadow-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-bold ml-1 text-muted-foreground uppercase tracking-widest">Harga (RM)</Label>
+                  <Input 
+                    type="number"
+                    placeholder="0.00" 
+                    value={newItemAmount}
+                    onChange={(e) => setNewItemAmount(e.target.value)}
+                    className="h-12 rounded-xl border-none shadow-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-bold ml-1 text-muted-foreground uppercase tracking-widest">Aktif Sehingga (Pilihan)</Label>
+                  <Input 
+                    type="month"
+                    value={newItemValidUntil}
+                    onChange={(e) => setNewItemValidUntil(e.target.value)}
+                    className="h-12 rounded-xl border-none shadow-sm"
+                  />
+                </div>
+                <Button type="submit" className="w-full h-12 rounded-xl font-bold flex gap-2 shadow-lg shadow-primary/20">
+                  <Plus className="w-4 h-4" /> Tambah Item
+                </Button>
+              </div>
+            </form>
           </div>
-          <div className="space-y-1">
-            <Label className="text-[10px] font-bold ml-1 text-muted-foreground uppercase tracking-widest">Aktif Sehingga (Pilihan)</Label>
-            <Input 
-              type="month"
-              value={newItemValidUntil}
-              onChange={(e) => setNewItemValidUntil(e.target.value)}
-              className="h-10 rounded-xl border-none shadow-sm"
-            />
+
+          {/* Right Column: Items List */}
+          <div className="lg:col-span-2 space-y-6">
+            <Carousel setApi={setApi} className="w-full">
+              <CarouselContent>
+                {months.map((month) => (
+                  <CarouselItem key={month.key}>
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                          <ReceiptText className="w-4 h-4 text-primary" />
+                          Senarai Komitmen {month.label}
+                        </h2>
+                        <span className="text-[10px] font-bold bg-muted px-3 py-1 rounded-full">{filteredItems.length} Item</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 min-h-[400px]">
+                        {filteredItems.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-20 opacity-30 bg-muted/20 rounded-[3rem] border-2 border-dashed">
+                            <Calendar className="w-12 h-12 mb-4" />
+                            <p className="font-bold">Tiada komitmen untuk bulan ini.</p>
+                          </div>
+                        ) : (
+                          filteredItems.map((item) => (
+                            <ItemRow 
+                              key={item.id} 
+                              item={item} 
+                              userUid={user!.uid} 
+                              checklistId={id} 
+                              monthKey={month.key}
+                              onEdit={() => {
+                                setEditingItem(item);
+                                setEditName(item.name);
+                                setEditAmount(item.amount.toString());
+                              }}
+                              onDelete={() => handleMonthlyDelete(item.id, item.name)}
+                            />
+                          ))
+                        )}
+                      </div>
+
+                      {excludedItems.length > 0 && (
+                        <div className="mt-8 space-y-4 border-t pt-8 border-dashed">
+                           <Button 
+                             variant="ghost" 
+                             className="w-full text-xs font-bold uppercase tracking-widest text-muted-foreground hover:bg-muted/50 rounded-2xl h-12"
+                             onClick={() => setShowHidden(!showHidden)}
+                           >
+                             {showHidden ? 'Sembunyikan' : 'Lihat'} {excludedItems.length} Item Dipadam Bulan Ini
+                           </Button>
+                           
+                           {showHidden && (
+                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 opacity-60">
+                                {excludedItems.map(item => (
+                                  <div key={item.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl">
+                                    <span className="text-sm font-medium line-through truncate mr-2">{item.name}</span>
+                                    <Button variant="outline" size="sm" onClick={() => handleRestore(item.id)} className="h-8 px-3 text-[10px] font-bold flex gap-1 rounded-lg">
+                                      <RotateCcw className="w-3 h-3" /> Pulihkan
+                                    </Button>
+                                  </div>
+                                ))}
+                             </div>
+                           )}
+                        </div>
+                      )}
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+            </Carousel>
           </div>
-          <Button type="submit" className="w-full h-10 rounded-xl font-bold flex gap-2">
-            <Plus className="w-4 h-4" /> Tambah Item
-          </Button>
-        </form>
-      </div>
+        </div>
+      </main>
 
       <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
         <DialogContent className="rounded-3xl max-w-[90vw] sm:max-w-md">
@@ -351,7 +356,7 @@ export default function ChecklistDetailPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Nama</Label>
+              <Label>Nama Komitmen</Label>
               <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="rounded-xl h-12" />
             </div>
             <div className="space-y-2">
@@ -394,43 +399,43 @@ function ItemRow({
   }, [item.payments, item.amount]);
 
   return (
-    <div className={`flex items-center gap-4 p-4 rounded-2xl border-none shadow-sm transition-all ${isPaid ? 'bg-muted/50' : 'bg-card'}`}>
+    <div className={`flex items-center gap-4 p-5 rounded-[2rem] border-none shadow-sm transition-all group ${isPaid ? 'bg-muted/50' : 'bg-card hover:shadow-md'}`}>
       <Checkbox 
         checked={isPaid} 
         onCheckedChange={() => toggleChecklistItem(userUid, checklistId, item.id, monthKey)}
-        className="w-6 h-6 rounded-lg border-2"
+        className="w-7 h-7 rounded-xl border-2"
       />
       <div className="flex-1 min-w-0">
-        <p className={`font-bold text-sm truncate ${isPaid ? 'line-through text-muted-foreground' : ''}`}>{item.name}</p>
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2 text-[10px]">
-            <span className="font-black text-primary">RM{item.amount.toLocaleString()}</span>
+        <p className={`font-black text-base truncate ${isPaid ? 'line-through text-muted-foreground' : ''}`}>{item.name}</p>
+        <div className="flex flex-col gap-1.5 mt-1">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-black text-primary">RM{item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             {transactionId && (
-              <span className="flex items-center gap-0.5 bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-full font-bold">
-                <CheckCircle2 className="w-2.5 h-2.5" /> Direkod
+              <span className="flex items-center gap-1 bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full text-[10px] font-black">
+                <CheckCircle2 className="w-3 h-3" /> DIREKOD
               </span>
             )}
           </div>
           {historyStats.count > 0 && (
-            <div className="flex items-center gap-1 text-[9px] text-muted-foreground bg-primary/5 w-fit px-2 py-0.5 rounded-lg border border-primary/5">
-              <History className="w-2.5 h-2.5 text-primary/50" />
-              <span>Terkumpul: <b className="text-foreground">RM{historyStats.total.toLocaleString()}</b></span>
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-primary/5 w-fit px-3 py-1 rounded-xl border border-primary/10">
+              <History className="w-3 h-3 text-primary/50" />
+              <span>Sudah dibayar <b className="text-foreground">{historyStats.count} kali</b> (Jumlah: RM{historyStats.total.toLocaleString()})</span>
             </div>
           )}
         </div>
       </div>
-      <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon" onClick={onEdit} className="rounded-full h-8 w-8 text-muted-foreground">
-          <Edit2 className="w-4 h-4" />
+      <div className="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button variant="ghost" size="icon" onClick={onEdit} className="rounded-full h-10 w-10 text-muted-foreground hover:text-primary">
+          <Edit2 className="w-5 h-5" />
         </Button>
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={onDelete}
-          className="rounded-full h-8 w-8 text-muted-foreground hover:text-rose-500 hover:bg-rose-50"
-          title="Padam untuk bulan ini"
+          className="rounded-full h-10 w-10 text-muted-foreground hover:text-rose-500 hover:bg-rose-50"
+          title="Sembunyikan bulan ini"
         >
-          <EyeOff className="w-4 h-4" />
+          <EyeOff className="w-5 h-5" />
         </Button>
       </div>
     </div>
