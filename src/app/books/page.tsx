@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { subscribeToBooks, createBook, Book } from "@/lib/services/db";
 import { Button } from "@/components/ui/button";
@@ -166,7 +166,7 @@ export default function BooksPage() {
         <nav className="bg-white/80 backdrop-blur-xl border border-white shadow-2xl rounded-full p-2 flex justify-around items-center">
           <Link href="/dashboard" className="p-3 rounded-full hover:bg-muted text-muted-foreground transition-colors">
             <LayoutDashboard className="w-6 h-6" />
-          </div >
+          </Link>
           <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white shadow-lg shadow-primary/30">
             <BookOpen className="w-6 h-6" />
           </div>
