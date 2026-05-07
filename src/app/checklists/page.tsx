@@ -171,22 +171,22 @@ export default function ChecklistsPage() {
                   className="cursor-pointer group"
                 >
                   <Card className="h-full hover:shadow-xl transition-all border-none shadow-sm rounded-[2rem] overflow-hidden bg-card active:scale-[0.98]">
-                    <CardHeader className="p-6 flex flex-row items-center justify-between space-y-0">
-                      <div className="flex items-center gap-4">
-                        <div className="bg-primary/10 p-3 rounded-2xl group-hover:bg-primary/20 transition-colors">
+                    <CardHeader className="p-6 flex flex-row items-center justify-between space-y-0 gap-4">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="bg-primary/10 p-3 rounded-2xl group-hover:bg-primary/20 transition-colors shrink-0">
                           <ShoppingBag className="w-6 h-6 text-primary" />
                         </div>
-                        <div className="flex flex-col">
-                          <CardTitle className="text-lg font-bold truncate max-w-[150px]">{c.name}</CardTitle>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        <div className="flex flex-col min-w-0">
+                          <CardTitle className="text-lg font-bold truncate">{c.name}</CardTitle>
+                          <div className="flex items-center gap-2 truncate">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest truncate">
                               {c.items.filter(i => Object.values(i.payments || {}).some(p => p.isPaid)).length} SEJARAH BAYARAN
                             </span>
-                            {c.bookId && <Wallet className="w-3 h-3 text-primary opacity-50" />}
+                            {c.bookId && <Wallet className="w-3 h-3 text-primary opacity-50 shrink-0" />}
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                         <Button 
                           type="button"
                           variant="ghost" 

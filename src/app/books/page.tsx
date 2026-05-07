@@ -117,19 +117,19 @@ export default function BooksPage() {
               books.map((book) => (
                 <Link key={book.id} href={`/books/${book.id}`} className="group">
                   <Card className="h-full hover:shadow-xl transition-all border-none shadow-sm rounded-[2rem] overflow-hidden bg-card active:scale-[0.98]">
-                    <CardHeader className="p-6 flex flex-row items-center justify-between space-y-0">
-                      <div className="flex items-center gap-4">
-                        <div className="bg-primary/10 p-3 rounded-2xl group-hover:bg-primary/20 transition-colors">
+                    <CardHeader className="p-6 flex flex-row items-center justify-between space-y-0 gap-4">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="bg-primary/10 p-3 rounded-2xl group-hover:bg-primary/20 transition-colors shrink-0">
                           <BookOpen className="w-6 h-6 text-primary" />
                         </div>
-                        <div className="flex flex-col">
-                          <CardTitle className="text-lg font-black truncate max-w-[150px]">{book.name}</CardTitle>
-                          <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+                        <div className="flex flex-col min-w-0">
+                          <CardTitle className="text-lg font-black truncate">{book.name}</CardTitle>
+                          <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest truncate">
                             Dicipta {book.createdAt?.toDate ? book.createdAt.toDate().toLocaleDateString() : 'Baru'}
                           </span>
                         </div>
                       </div>
-                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform shrink-0" />
                     </CardHeader>
                     <CardContent className="p-6 pt-0">
                       <div className="bg-muted/30 rounded-3xl p-5 space-y-4">
