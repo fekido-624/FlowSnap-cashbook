@@ -3,57 +3,47 @@
 ## 1. Ringkasan Projek
 FlowSnap (BukuAkaun) adalah aplikasi pengurusan aliran tunai (cash flow) mudah alih yang direka dengan estetika moden. Ia membolehkan pengguna menguruskan pelbagai "Buku Akaun" dan "Checklist Bayaran" bulanan dengan penyelarasan automatik.
 
-## 2. Tech Stack
+## 2. Tech Stack Utama
 - **Framework**: Next.js 15 (App Router)
 - **Bahasa**: TypeScript
 - **Styling**: Tailwind CSS + Shadcn UI
 - **Ikon**: Lucide React
-- **Persistence**: 
-  - Fasa 1: LocalStorage (Semasa - Prototaip Pantas)
-  - Fasa 2: Firebase Firestore (Cadangan Utama untuk Real-time & Multi-user dalam Firebase Studio)
-  - Fasa 3: **Prisma + SQLite/PostgreSQL** (Pilihan Akhir untuk Self-host di TrueNAS Scale)
+- **Persistence (Fasa Pembangunan)**: LocalStorage
+- **Persistence (Fasa Produksi/NAS)**: Prisma + SQLite
 
-## 3. Kamus Teknikal (Untuk Rujukan Self-Hosting)
+## 3. Strategi Multi-User & Hybrid Auth
+Sistem ini direka untuk menyokong sekumpulan kecil pengguna (Small Circle) dengan kawalan data yang selamat.
+
+### A. Identiti (Firebase Auth)
+- Digunakan untuk Login/Signup dan pengurusan sesi.
+- **Kelebihan**: Keselamatan terjamin tanpa perlu menguruskan pangkalan data kata laluan secara manual.
+- **Keperluan**: Memerlukan internet untuk proses pengesahan identiti.
+
+### B. Penyimpanan Data (Prisma + SQLite di TrueNAS)
+- Semua data kewangan disimpan secara lokal di dalam server anda.
+- **Isolasi Data**: Setiap meja (`Book`, `Transaction`, `Checklist`) mempunyai kolum `userId` (ID dari Firebase).
+- **Logik Query**: `db.transaction.findMany({ where: { userId: currentUserId } })` memastikan user hanya melihat data milik mereka sendiri.
+
+## 4. Kamus Teknikal (Rujukan Self-Hosting)
 
 ### A. Database (Peti Simpanan Data)
-1. **SQLite (The "Lightweight" Choice)**:
-   - Simpan data dalam satu fail `.db` sahaja.
+1. **SQLite (Pilihan Utama NAS)**:
+   - Simpan data dalam satu fail `.db`.
    - Sangat mudah untuk TrueNAS: Cuma simpan fail dalam dataset yang anda mount ke Docker.
-   - Sesuai untuk kegunaan peribadi atau 1-10 pengguna.
-2. **PostgreSQL (The "Pro" Choice)**:
-   - Berjalan sebagai database server (Docker container berasingan).
-   - Perlukan port mapping (cth: 5432) dan username/password.
-   - Sangat stabil untuk data besar dan akses berbilang pengguna yang tinggi.
+   - Ideal untuk kegunaan "Small Circle" (1-20 pengguna).
+2. **PostgreSQL (Pilihan Korporat)**:
+   - Berjalan sebagai database server berasingan.
+   - Sesuai jika aplikasi berkembang kepada ribuan pengguna.
 
 ### B. Prisma (The Smart Bridge / ORM)
-Prisma bertindak sebagai "pemandu" antara kod Next.js dan database.
-- **Penterjemah**: Ia menukar kod TypeScript anda kepada bahasa SQL secara automatik.
-- **Migrasi Mudah**: Untuk pindah dari SQLite ke PostgreSQL, anda hanya perlu tukar `provider = "sqlite"` kepada `provider = "postgresql"` dalam fail `schema.prisma`.
-- **Kod UI Selamat**: Kod paparan anda tidak akan berubah langsung walaupun anda tukar database di belakang tabir.
-
-## 4. Strategi Deployment ke NAS (TrueNAS Scale)
-
-### Opsyen A: Hybrid (Firebase Auth + Prisma SQL)
-*   **Cara**: Gunakan Firebase untuk Login, dan Prisma/NAS untuk simpan data kewangan.
-*   **Kelebihan**: Sangat selamat, tak perlu coding sistem security sendiri.
-*   **Kekurangan**: Perlu internet untuk login.
-
-### Opsyen B: 100% Local (NextAuth + Prisma SQL)
-*   **Cara**: Gunakan NextAuth dengan Prisma Adapter untuk simpan semua data (termasuk user & password) di dalam NAS anda.
-*   **Kelebihan**: Boleh jalan 100% offline.
-*   **Kekurangan**: Lebih rumit untuk setup dan anda bertanggungjawab sepenuhnya atas keselamatan database password.
+Bertindak sebagai "penterjemah" antara kod TypeScript dan database.
+- Jika mahu pindah dari SQLite ke PostgreSQL, hanya perlu tukar `provider` dalam fail `schema.prisma`.
 
 ## 5. Logik Sistem Utama
+- **Hubungan Checklist & Buku**: Apabila item ditanda bayar, `transactionId` akan dicipta dalam database SQLite untuk rujukan silang.
+- **Monthly Override**: Menggunakan `excludedMonths` untuk fleksibiliti paparan bulanan.
 
-### A. Hubungan Checklist & Buku Akaun (Decoupled History)
-Apabila item di-*tick*:
-1. Transaksi 'out' dicipta dalam Buku Akaun.
-2. `transactionId` disimpan dalam checklist item untuk rujukan silang.
-
-### B. Pengurusan Bulanan (Monthly Override)
-- Menggunakan `excludedMonths: string[]` (format YYYY-MM) untuk menyembunyikan item pada bulan tertentu tanpa memadamnya secara kekal dari pangkalan data.
-
-## 6. Strategi Responsive UI
-- Penggunaan sidebar tetap pada desktop dan bottom nav pada mobile.
-- Grid sistem dinamik (1 kolum mobile, 3 kolum desktop).
-- Penggunaan `line-clamp-2` pada tajuk kad untuk mengelakkan teks terpotong secara hodoh sambil mengekalkan keseragaman saiz kad.
+## 6. Strategi Deployment ke TrueNAS Scale
+- Jalankan aplikasi sebagai **Docker Container**.
+- Gunakan **Persistent Volume** untuk fail `database.db` supaya data tidak hilang apabila container di-restart.
+- Set `DATABASE_URL` dalam environment variables mengikut laluan fail tersebut.
