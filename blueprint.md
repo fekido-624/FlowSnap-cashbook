@@ -9,10 +9,9 @@ FlowSnap (BukuAkaun) adalah aplikasi pengurusan aliran tunai (cash flow) mudah a
 - **Styling**: Tailwind CSS + Shadcn UI
 - **Ikon**: Lucide React
 - **Persistence**: 
-  - Fasa 1: LocalStorage (Semasa)
-  - Fasa 2: Firebase Firestore (Cadangan untuk Real-time & Multi-user)
-  - Alternatif: Prisma + PostgreSQL (Jika memerlukan relational data yang kompleks)
-- **State Management**: React Hooks (useState, useEffect, useMemo) & Context API (AuthContext)
+  - Fasa 1: LocalStorage (Semasa - Prototaip Pantas)
+  - Fasa 2: Firebase Firestore (Cadangan Utama untuk Real-time & Multi-user)
+  - Fasa 3: Prisma + PostgreSQL (Pilihan jika mahu self-host sepenuhnya di server peribadi/TrueNAS Scale)
 
 ## 3. Seni Bina Data (Data Models)
 
@@ -68,6 +67,7 @@ Gunakan sistem grid untuk paparan bersebelahan pada desktop:
 - Mobile: Bottom Nav (`md:hidden`)
 - Desktop: Sidebar Tetap (`hidden md:flex`)
 
-## 6. Database Roadmap
-- **Firebase Firestore**: Pilihan terbaik untuk prototaip pantas, real-time updates, dan integrasi mudah dengan auth.
-- **Prisma**: Pilihan jika aplikasi berkembang menjadi sistem enterprise yang memerlukan integriti data SQL yang sangat ketat.
+## 6. Database Roadmap & Keputusan
+- **Keputusan**: Buat masa ini, aplikasi akan kekal menggunakan **Firebase Firestore** untuk fasa pembangunan dalam Firebase Studio.
+- **Sebab**: Integrasi 'serverless', keupayaan real-time, dan alatan AI yang dioptimumkan untuk Firebase dalam persekitaran ini.
+- **Masa Depan**: Kod disusun secara 'service-based' (dalam `src/lib/services/db.ts`) bagi memudahkan migrasi ke **Prisma/SQL** jika user mahu hoskan sendiri di server TrueNAS Scale pada masa hadapan.
