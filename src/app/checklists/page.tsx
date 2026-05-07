@@ -74,7 +74,7 @@ export default function ChecklistsPage() {
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (!confirm("Padam keseluruhan checklist ini?")) return;
+    if (!confirm("Padam keseluruhan checklist ini?"));
     try {
       await deleteChecklist(id);
       toast({ title: "Dipadam", description: "Checklist telah berjaya dibuang." });
@@ -171,14 +171,16 @@ export default function ChecklistsPage() {
                   className="cursor-pointer group"
                 >
                   <Card className="h-full hover:shadow-xl transition-all border-none shadow-sm rounded-[2rem] overflow-hidden bg-card active:scale-[0.98]">
-                    <CardHeader className="p-6 flex flex-row items-center justify-between space-y-0 gap-4">
-                      <div className="flex items-center gap-4 min-w-0">
+                    <CardHeader className="p-6 flex flex-row items-start justify-between space-y-0 gap-4">
+                      <div className="flex items-start gap-4 min-w-0">
                         <div className="bg-primary/10 p-3 rounded-2xl group-hover:bg-primary/20 transition-colors shrink-0">
                           <ShoppingBag className="w-6 h-6 text-primary" />
                         </div>
                         <div className="flex flex-col min-w-0">
-                          <CardTitle className="text-lg font-bold truncate">{c.name}</CardTitle>
-                          <div className="flex items-center gap-2 truncate">
+                          <CardTitle className="text-base sm:text-lg font-black leading-tight line-clamp-2 min-h-[3rem]">
+                            {c.name}
+                          </CardTitle>
+                          <div className="flex items-center gap-2 mt-1">
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest truncate">
                               {c.items.filter(i => Object.values(i.payments || {}).some(p => p.isPaid)).length} SEJARAH BAYARAN
                             </span>
@@ -186,7 +188,7 @@ export default function ChecklistsPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <div className="flex flex-col items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                         <Button 
                           type="button"
                           variant="ghost" 
