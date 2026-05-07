@@ -7,21 +7,20 @@ Aplikasi pengurusan aliran tunai (cash flow) yang moden, ringan, dan fokus kepad
 - **Buku Akaun**: Urus berbilang buku akaun untuk tujuan berbeza (Bisnes, Rumah, Personal).
 - **Checklist Bayaran**: Pantau komitmen bulanan dengan sistem "Monthly Override".
 - **Responsive UI**: Pengalaman pengguna yang lancar pada Mobile (Bottom Nav) dan Desktop (Sidebar).
-- **Multi-User Ready**: Direka untuk menyokong pengasingan data antara pengguna.
+- **Multi-User Ready**: Direka untuk menyokong pengasingan data antara pengguna menggunakan Firebase Auth.
 
 ## Arahan Push ke Git (Pertama Kali)
 
-Ikuti langkah ini untuk menghantar projek ke GitHub/GitLab:
+Ikuti langkah ini untuk menghantar projek ke GitHub/GitLab anda:
 
-1. **Cipta Repo Baru**: Cipta satu repository kosong di akaun GitHub/GitLab anda.
-2. **Setup Git Lokal**:
+1. **Setup Git Lokal**:
    ```bash
    git init
    git add .
-   git commit -m "Initial commit: BukuAkaun Responsive System with Hybrid Auth Plan"
+   git commit -m "Update: Sistem Responsif, Dashboard, dan Navigasi baru"
    ```
-3. **Sambungkan & Push**:
-   *(Ganti `<url-repo-anda>` dengan link dari GitHub/GitLab anda)*
+2. **Sambungkan & Push**:
+   *(Ganti `<url-repo-anda>` dengan link repository kosong dari GitHub/GitLab anda)*
    ```bash
    git branch -M main
    git remote add origin <url-repo-anda>
