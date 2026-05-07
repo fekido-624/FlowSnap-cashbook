@@ -10,8 +10,8 @@ FlowSnap (BukuAkaun) adalah aplikasi pengurusan aliran tunai (cash flow) mudah a
 - **Ikon**: Lucide React
 - **Persistence**: 
   - Fasa 1: LocalStorage (Semasa - Prototaip Pantas)
-  - Fasa 2: Firebase Firestore (Cadangan Utama untuk Real-time & Multi-user)
-  - Fasa 3: **Prisma + PostgreSQL** (Pilihan Akhir untuk Self-host di TrueNAS Scale)
+  - Fasa 2: Firebase Firestore (Cadangan Utama untuk Real-time & Multi-user dalam Firebase Studio)
+  - Fasa 3: **Prisma + SQLite/PostgreSQL** (Pilihan Akhir untuk Self-host di TrueNAS Scale)
 
 ## 3. Seni Bina Data (Data Models)
 
@@ -51,25 +51,12 @@ Apabila item di-*tick*:
 - Menggunakan `excludedMonths: string[]` (format YYYY-MM) untuk menyembunyikan item pada bulan tertentu tanpa memadamnya secara kekal.
 
 ## 5. Strategi Responsive UI
-
-### A. Perubahan Layout (Container)
-Tukar `max-w-md` kepada `max-w-7xl` pada skrin besar menggunakan Tailwind:
-```tsx
-<div className="max-w-md md:max-w-7xl mx-auto px-4">
-```
-
-### B. Grid & Column
-Gunakan sistem grid untuk paparan bersebelahan pada desktop:
-- Mobile: 1 kolum
-- Desktop: 2 atau 3 kolum menggunakan `grid-cols-1 md:grid-cols-3`.
-
-### C. Navigasi
-- Mobile: Bottom Nav (`md:hidden`)
-- Desktop: Sidebar Tetap (`hidden md:flex`)
+- Penggunaan sidebar tetap pada desktop dan bottom nav pada mobile.
+- Grid sistem dinamik (1 kolum mobile, 3 kolum desktop).
 
 ## 6. Database Roadmap & Keputusan (Self-Hosting)
-- **Keputusan Semasa**: Menggunakan **Firebase Firestore** untuk fasa pembangunan pantas dalam Firebase Studio.
-- **Roadmap NAS (TrueNAS Scale)**:
-  - **PostgreSQL**: Bertindak sebagai engine pangkalan data (Database Server) yang diletakkan dalam Docker Container di TrueNAS.
-  - **Prisma**: Bertindak sebagai ORM (Penterjemah) dalam kod Next.js untuk menguruskan data dalam PostgreSQL.
-- **Strategi Migrasi**: Kod disusun secara 'service-based' (dalam `src/lib/services/db.ts`) bagi memudahkan pertukaran daripada API Firebase kepada Prisma Client apabila pengguna sedia untuk berpindah ke server peribadi.
+- **Fasa Prototaip**: Menggunakan **Firebase Firestore**. Ini membolehkan pembangunan pantas fungsi real-time dan multi-user di dalam persekitaran Firebase Studio.
+- **Fasa Self-Host (TrueNAS Scale)**:
+  - **Pilihan A (Mudah)**: **Prisma + SQLite**. Sesuai jika anda tidak mahu install database server. Data disimpan dalam satu fail `.db` di dalam NAS.
+  - **Pilihan B (Pro)**: **Prisma + PostgreSQL**. Anda perlu jalankan Docker Container PostgreSQL di TrueNAS. Lebih stabil untuk akses serentak yang tinggi.
+- **Strategi Migrasi**: Kod disusun secara 'service-based' (dalam `src/lib/services/db.ts`). Apabila anda sedia untuk berpindah ke NAS, anda hanya perlu menulis semula fungsi dalam fail tersebut untuk menggunakan Prisma Client. UI tidak perlu diubah.
