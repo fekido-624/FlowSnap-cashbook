@@ -13,7 +13,24 @@ FlowSnap (BukuAkaun) adalah aplikasi pengurusan aliran tunai (cash flow) mudah a
   - Fasa 2: Firebase Firestore (Cadangan Utama untuk Real-time & Multi-user dalam Firebase Studio)
   - Fasa 3: **Prisma + SQLite/PostgreSQL** (Pilihan Akhir untuk Self-host di TrueNAS Scale)
 
-## 3. Seni Bina Data (Data Models)
+## 3. Strategi Database & Migrasi (Self-Hosting di NAS)
+
+### A. Terminologi Database
+1. **SQLite (The "Lightweight" Choice)**:
+   - Simpan data dalam satu fail `.db`.
+   - Sangat mudah untuk TrueNAS: Cuma simpan fail dalam dataset yang anda mount ke Docker.
+   - Sesuai untuk 1-10 pengguna serentak.
+2. **PostgreSQL (The "Pro" Choice)**:
+   - Berjalan sebagai database server (Docker container berasingan).
+   - Perlukan port mapping (cth: 5432) dan username/password.
+   - Sangat stabil untuk data besar dan akses berbilang pengguna yang tinggi.
+
+### B. Peranan Prisma (The Bridge)
+Prisma bertindak sebagai "pemandu" antara kod Next.js dan database. Jika anda menggunakan Prisma:
+- **Migrasi Mudah**: Untuk pindah dari SQLite ke PostgreSQL, anda hanya perlu tukar `provider = "sqlite"` kepada `provider = "postgresql"` dalam fail `schema.prisma`.
+- **Kod UI Selamat**: Kod paparan anda tidak akan berubah langsung walaupun anda tukar database di belakang tabir.
+
+## 4. Seni Bina Data (Data Models)
 
 ### A. Book (Buku Akaun)
 - `id`: string
@@ -40,23 +57,17 @@ FlowSnap (BukuAkaun) adalah aplikasi pengurusan aliran tunai (cash flow) mudah a
 - `bookId`: string
 - `items`: ChecklistItem[]
 
-## 4. Logik Sistem Utama
+## 5. Logik Sistem Utama
 
 ### A. Hubungan Checklist & Buku Akaun (Decoupled History)
 Apabila item di-*tick*:
 1. Transaksi 'out' dicipta dalam Buku Akaun.
-2. `transactionId` disimpan dalam checklist item.
+2. `transactionId` disimpan dalam checklist item untuk rujukan silang.
 
 ### B. Pengurusan Bulanan (Monthly Override)
-- Menggunakan `excludedMonths: string[]` (format YYYY-MM) untuk menyembunyikan item pada bulan tertentu tanpa memadamnya secara kekal.
+- Menggunakan `excludedMonths: string[]` (format YYYY-MM) untuk menyembunyikan item pada bulan tertentu tanpa memadamnya secara kekal dari pangkalan data.
 
-## 5. Strategi Responsive UI
+## 6. Strategi Responsive UI
 - Penggunaan sidebar tetap pada desktop dan bottom nav pada mobile.
 - Grid sistem dinamik (1 kolum mobile, 3 kolum desktop).
-
-## 6. Database Roadmap & Keputusan (Self-Hosting)
-- **Fasa Prototaip**: Menggunakan **Firebase Firestore**. Ini membolehkan pembangunan pantas fungsi real-time dan multi-user di dalam persekitaran Firebase Studio.
-- **Fasa Self-Host (TrueNAS Scale)**:
-  - **Pilihan A (Mudah)**: **Prisma + SQLite**. Sesuai jika anda tidak mahu install database server. Data disimpan dalam satu fail `.db` di dalam NAS.
-  - **Pilihan B (Pro)**: **Prisma + PostgreSQL**. Anda perlu jalankan Docker Container PostgreSQL di TrueNAS. Lebih stabil untuk akses serentak yang tinggi.
-- **Strategi Migrasi**: Kod disusun secara 'service-based' (dalam `src/lib/services/db.ts`). Apabila anda sedia untuk berpindah ke NAS, anda hanya perlu menulis semula fungsi dalam fail tersebut untuk menggunakan Prisma Client. UI tidak perlu diubah.
+- Penggunaan `line-clamp` untuk mengurus tajuk panjang tanpa merosakkan susun atur kad.
