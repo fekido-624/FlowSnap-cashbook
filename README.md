@@ -1,29 +1,31 @@
 # BukuAkaun - Pengurusan Aliran Tunai Bijak
 
-Aplikasi pengurusan aliran tunai (cash flow) yang moden, ringan, dan fokus kepada peranti mudah alih. Dibina dengan Next.js 15, Tailwind CSS, dan Shadcn UI.
+Aplikasi pengurusan aliran tunai (cash flow) yang moden, ringan, dan fokus kepada peranti mudah alih dengan sokongan penuh untuk paparan Web (Desktop). Dibina dengan Next.js 15, Tailwind CSS, dan Shadcn UI.
 
 ## Ciri-Ciri Utama
-- **Buku Akaun**: Urus berbilang buku akaun untuk tujuan berbeza.
-- **Checklist Bayaran**: Pantau komitmen bulanan dengan sistem "Monthly Override" (Padam/Pulih mengikut bulan).
-- **Analisis**: Lihat pecahan perbelanjaan mengikut kategori secara automatik.
-- **Keselamatan Data**: Rekod sejarah kewangan kekal walaupun checklist dipadam.
+- **Dashboard Global**: Gambaran keseluruhan baki, pendapatan, dan perbelanjaan dari semua buku.
+- **Buku Akaun**: Urus berbilang buku akaun untuk tujuan berbeza (Bisnes, Rumah, Personal).
+- **Checklist Bayaran**: Pantau komitmen bulanan dengan sistem "Monthly Override".
+- **Responsive UI**: Pengalaman pengguna yang lancar pada Mobile (Bottom Nav) dan Desktop (Sidebar).
+- **Analisis**: Pecahan perbelanjaan mengikut kategori secara automatik.
 
-## Arahan Push ke Git (Terminal)
+## Arahan Push ke Git (Pertama Kali)
 
 Jika anda ingin menghantar projek ini ke GitHub/GitLab:
 
-1. **Cipta Repo Baru**: Cipta satu repository kosong di akaun Git anda.
-2. **Inisialisasi & Commit**:
+1. **Cipta Repo Baru**: Cipta satu repository kosong di akaun GitHub/GitLab anda.
+2. **Set Nama & Emel (Jika perlu)**:
+   ```bash
+   git config --global user.name "Nama Anda"
+   git config --global user.email "emel@anda.com"
+   ```
+3. **Inisialisasi & Push**:
    ```bash
    git init
    git add .
-   git commit -m "Initial commit: BukuAkaun System"
-   ```
-3. **Hubungkan & Push**:
-   (Ganti URL di bawah dengan URL repo yang anda cipta)
-   ```bash
-   git remote add origin https://github.com/username/nama-repo.git
+   git commit -m "Initial commit: BukuAkaun Responsive System"
    git branch -M main
+   git remote add origin https://github.com/username/nama-repo.git
    git push -u origin main
    ```
 
