@@ -10,40 +10,38 @@ FlowSnap (BukuAkaun) adalah aplikasi pengurusan aliran tunai (cash flow) mudah a
 - **Ikon**: Lucide React
 - **Persistence (Fasa Pembangunan)**: LocalStorage
 - **Persistence (Fasa Produksi/NAS)**: Prisma + SQLite
+- **Authentication**: Firebase Auth (Hybrid Cloud Model)
 
 ## 3. Strategi Multi-User & Hybrid Auth
-Sistem ini direka untuk menyokong sekumpulan kecil pengguna (Small Circle) dengan kawalan data yang selamat.
+Sistem ini direka untuk menyokong sekumpulan kecil pengguna (Small Circle) dengan kawalan data yang selamat dan kos efektif.
 
 ### A. Identiti (Firebase Auth)
-- Digunakan untuk Login/Signup dan pengurusan sesi.
-- **Kelebihan**: Keselamatan terjamin tanpa perlu menguruskan pangkalan data kata laluan secara manual.
-- **Keperluan**: Memerlukan internet untuk proses pengesahan identiti.
+- Menguruskan Login, Signup, dan Sesi.
+- **Kelebihan**: Keselamatan tahap industri tanpa perlu menguruskan pangkalan data kata laluan secara manual.
+- **Keperluan**: Memerlukan internet untuk proses pengesahan (NAS mesti online).
 
 ### B. Penyimpanan Data (Prisma + SQLite di TrueNAS)
-- Semua data kewangan disimpan secara lokal di dalam server anda.
-- **Isolasi Data**: Setiap meja (`Book`, `Transaction`, `Checklist`) mempunyai kolum `userId` (ID dari Firebase).
-- **Logik Query**: `db.transaction.findMany({ where: { userId: currentUserId } })` memastikan user hanya melihat data milik mereka sendiri.
+- Semua data kewangan disimpan secara lokal di dalam server sendiri.
+- **Isolasi Data**: Setiap jadual (`Book`, `Transaction`, `Checklist`) mempunyai kolum `userId` (ID unik dari Firebase).
+- **Logik Query**: Setiap capaian data akan ditapis secara automatik: `db.transaction.findMany({ where: { userId: currentUserId } })`.
 
-## 4. Kamus Teknikal (Rujukan Self-Hosting)
+## 4. Kamus Teknikal (Rujukan Pembangunan)
 
 ### A. Database (Peti Simpanan Data)
-1. **SQLite (Pilihan Utama NAS)**:
-   - Simpan data dalam satu fail `.db`.
-   - Sangat mudah untuk TrueNAS: Cuma simpan fail dalam dataset yang anda mount ke Docker.
-   - Ideal untuk kegunaan "Small Circle" (1-20 pengguna).
-2. **PostgreSQL (Pilihan Korporat)**:
-   - Berjalan sebagai database server berasingan.
-   - Sesuai jika aplikasi berkembang kepada ribuan pengguna.
+1. **SQLite**: 
+   - Ringan, disimpan sebagai satu fail `.db` dalam folder projek.
+   - Sangat mudah untuk TrueNAS: Cuma perlu mount fail tersebut ke Docker Volume.
+   - Sesuai untuk kegunaan "Small Circle".
+2. **PostgreSQL**:
+   - Database server berasingan (Postgres Docker).
+   - Boleh dinaiktaraf dari SQLite menggunakan Prisma Migration jika perlu di masa depan.
 
 ### B. Prisma (The Smart Bridge / ORM)
-Bertindak sebagai "penterjemah" antara kod TypeScript dan database.
-- Jika mahu pindah dari SQLite ke PostgreSQL, hanya perlu tukar `provider` dalam fail `schema.prisma`.
+Bertindak sebagai "penterjemah" antara kod TypeScript dan database. 
+- Memudahkan pertukaran antara SQLite dan PostgreSQL tanpa rombakan kod besar.
+- Menjamin *Type-Safety* semasa pembangunan.
 
-## 5. Logik Sistem Utama
-- **Hubungan Checklist & Buku**: Apabila item ditanda bayar, `transactionId` akan dicipta dalam database SQLite untuk rujukan silang.
-- **Monthly Override**: Menggunakan `excludedMonths` untuk fleksibiliti paparan bulanan.
-
-## 6. Strategi Deployment ke TrueNAS Scale
+## 5. Strategi Deployment ke TrueNAS Scale
 - Jalankan aplikasi sebagai **Docker Container**.
 - Gunakan **Persistent Volume** untuk fail `database.db` supaya data tidak hilang apabila container di-restart.
-- Set `DATABASE_URL` dalam environment variables mengikut laluan fail tersebut.
+- Set `DATABASE_URL` dan `FIREBASE_CONFIG` dalam environment variables.

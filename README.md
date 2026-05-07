@@ -7,27 +7,26 @@ Aplikasi pengurusan aliran tunai (cash flow) yang moden, ringan, dan fokus kepad
 - **Buku Akaun**: Urus berbilang buku akaun untuk tujuan berbeza (Bisnes, Rumah, Personal).
 - **Checklist Bayaran**: Pantau komitmen bulanan dengan sistem "Monthly Override".
 - **Responsive UI**: Pengalaman pengguna yang lancar pada Mobile (Bottom Nav) dan Desktop (Sidebar).
-- **Analisis**: Pecahan perbelanjaan mengikut kategori secara automatik.
+- **Multi-User Ready**: Direka untuk menyokong pengasingan data antara pengguna.
 
 ## Arahan Push ke Git (Pertama Kali)
 
-Jika anda ingin menghantar projek ini ke GitHub/GitLab:
+Ikuti langkah ini untuk menghantar projek ke GitHub/GitLab:
 
 1. **Cipta Repo Baru**: Cipta satu repository kosong di akaun GitHub/GitLab anda.
-2. **Set Nama & Emel (Jika perlu)**:
-   ```bash
-   git config --global user.name "Nama Anda"
-   git config --global user.email "emel@anda.com"
-   ```
-3. **Inisialisasi & Push**:
+2. **Setup Git Lokal**:
    ```bash
    git init
    git add .
-   git commit -m "Initial commit: BukuAkaun Responsive System"
+   git commit -m "Initial commit: BukuAkaun Responsive System with Hybrid Auth Plan"
+   ```
+3. **Sambungkan & Push**:
+   *(Ganti `<url-repo-anda>` dengan link dari GitHub/GitLab anda)*
+   ```bash
    git branch -M main
-   git remote add origin https://github.com/username/nama-repo.git
+   git remote add origin <url-repo-anda>
    git push -u origin main
    ```
 
 ## Nota Pembangunan
-Aplikasi ini menggunakan `LocalStorage` untuk penyimpanan data dalam fasa prototaip ini bagi memastikan kelajuan dan akses tanpa internet yang optimum. Untuk rujukan teknikal mendalam, lihat fail `blueprint.md`.
+Aplikasi ini sedang menggunakan `LocalStorage` untuk penyimpanan data dalam fasa prototaip. Pelan seterusnya adalah migrasi ke **Prisma + SQLite** dengan **Firebase Auth** untuk deployment ke NAS (TrueNAS Scale). Lihat `blueprint.md` untuk perincian teknikal.
