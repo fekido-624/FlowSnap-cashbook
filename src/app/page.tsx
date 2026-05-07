@@ -3,7 +3,6 @@
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { BookOpen } from "lucide-react";
 
 export default function Home() {
@@ -13,7 +12,7 @@ export default function Home() {
   useEffect(() => {
     if (!loading) {
       if (user) {
-        router.push("/books");
+        router.push("/dashboard");
       } else {
         router.push("/login");
       }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { BookOpen, LayoutDashboard, ListChecks, User, LogOut } from "lucide-react";
+import { BookOpen, LayoutDashboard, ListChecks, User, LogOut, Wallet } from "lucide-react";
 import { useAuth } from "@/lib/contexts/auth-context";
 
 export function Sidebar() {
@@ -20,7 +20,8 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-2">
-        <SidebarLink href="/books" icon={<LayoutDashboard />} label="Dashboard" active={pathname.startsWith('/books')} />
+        <SidebarLink href="/dashboard" icon={<LayoutDashboard />} label="Dashboard" active={pathname === '/dashboard'} />
+        <SidebarLink href="/books" icon={<Wallet />} label="Buku Akaun" active={pathname.startsWith('/books')} />
         <SidebarLink href="/checklists" icon={<ListChecks />} label="Checklists" active={pathname.startsWith('/checklists')} />
         <SidebarLink href="/profile" icon={<User />} label="Profil" active={pathname === '/profile'} />
       </nav>

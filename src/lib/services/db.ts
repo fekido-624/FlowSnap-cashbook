@@ -63,7 +63,7 @@ const setLocalBooks = (books: Book[]) => {
   localStorage.setItem('flowsnap_books', JSON.stringify(books));
 };
 
-const getLocalTransactions = (bookId: string): Transaction[] => {
+export const getLocalTransactions = (bookId: string): Transaction[] => {
   if (typeof window === 'undefined') return [];
   return JSON.parse(localStorage.getItem(`flowsnap_txs_${bookId}`) || '[]');
 };
@@ -100,24 +100,20 @@ export const createBook = async (userId: string, name: string) => {
 };
 
 export const deleteBook = async (bookId: string) => {
-  // 1. Padam buku akaun
   const books = getLocalBooks();
   const updatedBooks = books.filter(b => b.id !== bookId);
   setLocalBooks(updatedBooks);
-  
-  // 2. Padam semua transaksi berkaitan buku tersebut
   localStorage.removeItem(`flowsnap_txs_${bookId}`);
 
-  // 3. Reset checklist yang dipautkan: buang pautan bookId dan untick semua item
   const checklists = getLocalChecklists();
   const updatedChecklists = checklists.map(checklist => {
     if (checklist.bookId === bookId) {
       return {
         ...checklist,
-        bookId: undefined, // Buang pautan ke buku yang sudah tiada
+        bookId: undefined,
         items: checklist.items.map(item => ({
           ...item,
-          payments: {} // Reset semua status bayaran (un-tick secara pukal)
+          payments: {}
         }))
       };
     }
@@ -375,14 +371,13 @@ export const toggleChecklistItem = async (userId: string, checklistId: string, i
   const newPaidStatus = !currentStatus;
 
   if (newPaidStatus && checklist.bookId) {
-    // Tambah kategori checklist ke buku akaun secara automatik jika belum ada
     await addCategoryToBook(checklist.bookId, checklist.name);
 
     const tx = await addTransaction(userId, checklist.bookId, {
       type: 'out',
       amount: item.amount,
       method: 'Online',
-      category: checklist.name, // Gunakan nama checklist sebagai kategori
+      category: checklist.name,
       description: `Bayaran: ${item.name} (${monthKey})`
     });
     item.payments[monthKey] = { isPaid: true, transactionId: tx.id };
@@ -407,7 +402,6 @@ export const excludeItemFromMonth = async (checklistId: string, itemId: string, 
 
   const item = checklist.items[iIdx];
   
-  // Jika sudah dibayar, pulihkan baki (padam transaksi)
   if (item.payments[monthKey]?.isPaid && item.payments[monthKey].transactionId && checklist.bookId) {
     await deleteTransaction(checklist.bookId, item.payments[monthKey].transactionId!);
     item.payments[monthKey] = { isPaid: false };

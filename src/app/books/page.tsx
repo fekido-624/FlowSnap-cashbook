@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { subscribeToBooks, createBook, Book } from "@/lib/services/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Plus, BookOpen, LogOut, ChevronRight, Wallet, ListChecks, User } from "lucide-react";
+import { Plus, BookOpen, LogOut, ChevronRight, Wallet, ListChecks, User, LayoutDashboard } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -164,6 +164,9 @@ export default function BooksPage() {
       {/* Mobile Footer Nav */}
       <div className="md:hidden fixed bottom-6 left-6 right-6 max-w-md mx-auto z-50">
         <nav className="bg-white/80 backdrop-blur-xl border border-white shadow-2xl rounded-full p-2 flex justify-around items-center">
+          <Link href="/dashboard" className="p-3 rounded-full hover:bg-muted text-muted-foreground transition-colors">
+            <LayoutDashboard className="w-6 h-6" />
+          </div >
           <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white shadow-lg shadow-primary/30">
             <BookOpen className="w-6 h-6" />
           </div>
