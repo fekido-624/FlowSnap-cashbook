@@ -34,7 +34,7 @@ export default function BookDetailPage() {
   const { user, loading } = useAuth();
   const [book, setBook] = useState<Book | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [filter, setFilter] = useState({ method: 'All', category: 'All', dateRange: null as any });
+  const [filter, setFilter] = useState({ method: 'All', category: 'All', type: 'All', month: 'All', dateRange: null as any });
   const [searchQuery, setSearchQuery] = useState("");
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [txType, setTxType] = useState<'in' | 'out'>('in');
@@ -68,10 +68,12 @@ export default function BookDetailPage() {
     return transactions.filter(tx => {
       const matchMethod = filter.method === 'All' || tx.method === filter.method;
       const matchCategory = filter.category === 'All' || tx.category === filter.category;
+      const matchType = filter.type === 'All' || tx.type === filter.type;
+      const matchMonth = filter.month === 'All' || format(new Date(tx.timestamp), 'yyyy-MM') === filter.month;
       const matchSearch = tx.category.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (tx.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
                           tx.amount.toString().includes(searchQuery);
-      return matchMethod && matchCategory && matchSearch;
+      return matchMethod && matchCategory && matchType && matchMonth && matchSearch;
     });
   }, [transactions, filter, searchQuery]);
 
@@ -154,7 +156,7 @@ export default function BookDetailPage() {
     </div>
   );
 
-  const isFilterActive = filter.method !== 'All' || filter.category !== 'All' || searchQuery !== "";
+  const isFilterActive = filter.method !== 'All' || filter.category !== 'All' || filter.type !== 'All' || filter.month !== 'All' || searchQuery !== "";
 
   return (
     <div className="min-h-svh bg-background flex flex-col md:flex-row">
@@ -287,9 +289,39 @@ export default function BookDetailPage() {
                   </div>
                 </div>
 
+                {/* Active filter badges */}
+                {isFilterActive && (
+                  <div className="flex flex-wrap gap-2">
+                    {filter.month !== 'All' && (
+                      <span className="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1.5 rounded-full text-xs font-bold">
+                        📅 {filter.month}
+                        <button onClick={() => setFilter({ ...filter, month: 'All' })} className="ml-1 hover:text-primary/70">✕</button>
+                      </span>
+                    )}
+                    {filter.type !== 'All' && (
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${filter.type === 'in' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                        {filter.type === 'in' ? '↗ Masuk' : '↘ Keluar'}
+                        <button onClick={() => setFilter({ ...filter, type: 'All' })} className="ml-1 hover:opacity-70">✕</button>
+                      </span>
+                    )}
+                    {filter.method !== 'All' && (
+                      <span className="inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full text-xs font-bold">
+                        💳 {filter.method === 'Cash' ? 'Tunai' : 'Online'}
+                        <button onClick={() => setFilter({ ...filter, method: 'All' })} className="ml-1 hover:opacity-70">✕</button>
+                      </span>
+                    )}
+                    {filter.category !== 'All' && (
+                      <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-full text-xs font-bold">
+                        🏷 {filter.category}
+                        <button onClick={() => setFilter({ ...filter, category: 'All' })} className="ml-1 hover:opacity-70">✕</button>
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
                   <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground">
-                    {isFilterActive ? 'Hasil Carian' : 'Rekod Terkini'}
+                    {isFilterActive ? 'Hasil Tapisan' : 'Rekod Terkini'}
                   </h2>
                   <span className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded-full">{filteredTransactions.length} item</span>
                 </div>
