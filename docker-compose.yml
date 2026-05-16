@@ -1,0 +1,36 @@
+services:
+  flowsnap:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: flowsnap-cashbook:latest
+    container_name: flowsnap-cashbook
+    restart: unless-stopped
+    ports:
+      # Host port : Container port. Bind to a host port your reverse proxy can reach.
+      - "9002:9002"
+    environment:
+      # SQLite file lives inside the mounted volume below
+      DATABASE_URL: "file:/app/data/flowsnap.db"
+      NODE_ENV: "production"
+      # Admin bootstrap credentials (change these before first run!)
+      NEXT_PUBLIC_ADMIN_EMAIL: "${ADMIN_EMAIL:-admin@flowsnap.local}"
+      NEXT_PUBLIC_ADMIN_PASSWORD: "${ADMIN_PASSWORD:-changeMeNow}"
+    volumes:
+      # Persist SQLite DB on the host. Map to a TrueNAS dataset for snapshots.
+      - flowsnap-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9002"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  flowsnap-data:
+    # On TrueNAS, replace this with a bind mount to a dataset path, e.g.:
+    # driver: local
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: /mnt/tank/apps/flowsnap/data

@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { BookOpen, LayoutDashboard, ListChecks, User, LogOut, Wallet } from "lucide-react";
+import { BookOpen, LayoutDashboard, ListChecks, User, LogOut, Wallet, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/contexts/auth-context";
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <aside className="hidden md:flex w-64 flex-col bg-card border-r sticky top-0 h-svh p-6">
@@ -24,6 +24,9 @@ export function Sidebar() {
         <SidebarLink href="/books" icon={<Wallet />} label="Buku Akaun" active={pathname.startsWith('/books')} />
         <SidebarLink href="/checklists" icon={<ListChecks />} label="Checklists" active={pathname.startsWith('/checklists')} />
         <SidebarLink href="/profile" icon={<User />} label="Profil" active={pathname === '/profile'} />
+        {user?.role === 'admin' && (
+          <SidebarLink href="/admin" icon={<ShieldCheck />} label="Pengurusan Pengguna" active={pathname === '/admin'} />
+        )}
       </nav>
 
       <div className="pt-6 border-t">

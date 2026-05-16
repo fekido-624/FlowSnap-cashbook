@@ -127,7 +127,7 @@ export default function BooksPage() {
                             {book.name}
                           </CardTitle>
                           <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">
-                            Dicipta {book.createdAt?.toDate ? book.createdAt.toDate().toLocaleDateString() : 'Baru'}
+                            Dicipta {book.createdAt ? new Date(book.createdAt).toLocaleDateString() : 'Baru'}
                           </span>
                         </div>
                       </div>

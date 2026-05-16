@@ -21,11 +21,11 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email);
+      await login(email, password);
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Login Failed",
+        title: "Gagal Log Masuk",
         description: error.message,
       });
     } finally {
@@ -45,7 +45,7 @@ export default function LoginPage() {
       <Card className="border-none shadow-xl bg-card rounded-[2rem]">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-          <CardDescription>Local development mode enabled.</CardDescription>
+          <CardDescription>Log in with the account you created earlier.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
@@ -73,7 +73,7 @@ export default function LoginPage() {
               />
             </div>
             <Button type="submit" className="w-full h-12 rounded-xl text-lg font-semibold" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In (Local)"}
+              {loading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
         </CardContent>

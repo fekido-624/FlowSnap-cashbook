@@ -323,7 +323,7 @@ export default function BookDetailPage() {
                               <span className="text-[11px] text-muted-foreground flex items-center gap-1 font-medium">
                                 <Wallet className="w-3.5 h-3.5" /> {tx.method}
                                 <span className="mx-1">•</span>
-                                {format(tx.timestamp.toDate(), "MMM dd, hh:mm a")}
+                                {format(new Date(tx.timestamp), "MMM dd, hh:mm a")}
                               </span>
                               {tx.description && <p className="text-xs text-muted-foreground italic truncate max-w-[200px]">{tx.description}</p>}
                             </div>

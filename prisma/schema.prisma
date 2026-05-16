@@ -1,0 +1,48 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Book {
+  id               String            @id @default(cuid())
+  userId           String
+  name             String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  netBalance       Float             @default(0)
+  totalCashIn      Float             @default(0)
+  totalCashOut     Float             @default(0)
+  customCategories String            @default("[]")
+  transactions     Transaction[]
+  checklists       Checklist[]
+}
+
+model Transaction {
+  id             String            @id @default(cuid())
+  book           Book              @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  bookId         String
+  userId         String
+  type           String
+  method         String
+  category       String
+  description    String?
+  amount         Float
+  timestamp      DateTime          @default(now())
+  runningBalance Float
+}
+
+model Checklist {
+  id         String   @id @default(cuid())
+  userId     String
+  name       String
+  book       Book?    @relation(fields: [bookId], references: [id], onDelete: SetNull)
+  bookId     String?
+  items      String   @default("[]")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}

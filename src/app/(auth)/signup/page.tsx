@@ -13,19 +13,33 @@ import { useToast } from "@/hooks/use-toast";
 export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { signup } = useAuth();
   const { toast } = useToast();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      toast({
+        variant: "destructive",
+        title: "Ralat Kata Laluan",
+        description: "Kata laluan dan pengesahan tidak sepadan.",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      await signup(email);
+      await signup(email, password);
+      toast({
+        title: "Berjaya",
+        description: "Akaun anda telah didaftarkan. Sila tunggu kelulusan admin.",
+      });
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Signup Failed",
+        title: "Pendaftaran Gagal",
         description: error.message,
       });
     } finally {
@@ -45,7 +59,7 @@ export default function SignupPage() {
       <Card className="border-none shadow-xl bg-card rounded-[2rem]">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Create account</CardTitle>
-          <CardDescription>Local development mode enabled.</CardDescription>
+          <CardDescription>Register a local account to access your books and transactions.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignup} className="space-y-4">
@@ -72,8 +86,19 @@ export default function SignupPage() {
                 className="rounded-xl h-12"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirm Password</Label>
+              <Input 
+                id="confirm-password" 
+                type="password" 
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                className="rounded-xl h-12"
+              />
+            </div>
             <Button type="submit" className="w-full h-12 rounded-xl text-lg font-semibold" disabled={loading}>
-              {loading ? "Creating account..." : "Sign Up (Local)"}
+              {loading ? "Creating account..." : "Create account"}
             </Button>
           </form>
         </CardContent>

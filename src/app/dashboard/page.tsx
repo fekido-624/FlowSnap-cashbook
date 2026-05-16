@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/lib/contexts/auth-context";
-import { subscribeToBooks, subscribeToChecklists, Book, Checklist, Transaction, getLocalTransactions } from "@/lib/services/db";
+import { subscribeToBooks, subscribeToChecklists, getTransactionsByBook, Book, Checklist, Transaction } from "@/lib/services/db";
 import { Sidebar } from "@/components/Sidebar";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -34,14 +34,17 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user) {
-      const unsubBooks = subscribeToBooks(user.uid, (data) => {
+      const unsubBooks = subscribeToBooks(user.uid, async (data) => {
         setBooks(data);
-        // Get combined recent transactions
+
         const allTxs: Transaction[] = [];
-        data.forEach(book => {
-          const bookTxs = getLocalTransactions(book.id);
-          allTxs.push(...bookTxs);
-        });
+        await Promise.all(
+          data.map(async (book) => {
+            const bookTxs = await getTransactionsByBook(book.id);
+            allTxs.push(...bookTxs);
+          })
+        );
+
         const sorted = allTxs
           .sort((a, b) => new Date(b.timestamp as any).getTime() - new Date(a.timestamp as any).getTime())
           .slice(0, 5);
@@ -91,6 +94,14 @@ export default function DashboardPage() {
     };
   }, [checklists]);
 
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return "Selamat Pagi";
+    if (hour >= 12 && hour < 16) return "Selamat Tengah Hari";
+    if (hour >= 16 && hour < 19) return "Selamat Petang";
+    return "Selamat Malam";
+  }, []);
+
   if (loading || !user) return null;
 
   return (
@@ -99,7 +110,7 @@ export default function DashboardPage() {
 
       <main className="flex-1 p-6 md:p-10 pb-32 md:pb-10 max-w-7xl mx-auto w-full">
         <header className="mb-10">
-          <h1 className="text-3xl font-black tracking-tight">Selamat Pagi! 👋</h1>
+          <h1 className="text-3xl font-black tracking-tight">{greeting}! 👋</h1>
           <p className="text-muted-foreground">Berikut adalah ringkasan kewangan anda hari ini.</p>
         </header>
 
