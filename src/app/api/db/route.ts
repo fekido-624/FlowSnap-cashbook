@@ -260,18 +260,61 @@ export async function POST(req: Request) {
         if (idx === -1) return new Response(JSON.stringify({ error: "Item tidak dijumpai" }), { status: 404 });
 
         const item = { ...items[idx] };
-        if (data.monthKey && item.payments?.[data.monthKey]?.isPaid && item.payments[data.monthKey].transactionId && checklist.bookId) {
-          await prisma.transaction.update({
-            where: { id: item.payments[data.monthKey].transactionId },
-            data: {
-              amount: Number(data.amount) || item.amount,
-              description: `Bayaran: ${data.name} (${data.monthKey})`
+        const newAmount = Number(data.amount) || item.amount;
+        const editMonthOnly = data.editMonthOnly === true;
+
+        // If editing for a specific month only, set an override on that month's payment
+        if (editMonthOnly && data.monthKey) {
+          if (!item.payments) item.payments = {};
+          if (!item.payments[data.monthKey]) {
+            item.payments[data.monthKey] = { isPaid: false };
+          }
+          item.payments[data.monthKey] = {
+            ...item.payments[data.monthKey],
+            amountOverride: newAmount,
+          };
+
+          // Also update the linked transaction if already paid
+          if (item.payments[data.monthKey].isPaid && item.payments[data.monthKey].transactionId && checklist.bookId) {
+            const txId = item.payments[data.monthKey].transactionId;
+            const tx = await prisma.transaction.findUnique({ where: { id: txId } });
+            if (tx) {
+              const book = await prisma.book.findUnique({ where: { id: checklist.bookId } });
+              if (book) {
+                const diff = newAmount - tx.amount;
+                await prisma.transaction.update({
+                  where: { id: txId },
+                  data: {
+                    amount: newAmount,
+                    description: `Bayaran: ${data.name || item.name} (${data.monthKey})`
+                  }
+                });
+                await prisma.book.update({
+                  where: { id: book.id },
+                  data: {
+                    netBalance: book.netBalance - diff,
+                    totalCashOut: book.totalCashOut + diff,
+                  }
+                });
+              }
             }
-          });
+          }
+        } else {
+          // Global edit — update base amount and sync paid transactions
+          if (data.monthKey && item.payments?.[data.monthKey]?.isPaid && item.payments[data.monthKey].transactionId && checklist.bookId) {
+            await prisma.transaction.update({
+              where: { id: item.payments[data.monthKey].transactionId },
+              data: {
+                amount: newAmount,
+                description: `Bayaran: ${data.name} (${data.monthKey})`
+              }
+            });
+          }
+          item.amount = newAmount;
         }
 
-        item.name = data.name;
-        item.amount = Number(data.amount) || item.amount;
+        // Name always updates globally
+        item.name = data.name || item.name;
         items[idx] = item;
 
         const updated = await prisma.checklist.update({
@@ -280,6 +323,7 @@ export async function POST(req: Request) {
         });
         return new Response(JSON.stringify(formatChecklist(updated)), { status: 200 });
       }
+
 
       case "toggleChecklistItem": {
         const checklist = await prisma.checklist.findUnique({ where: { id: data.checklistId } });
@@ -292,6 +336,8 @@ export async function POST(req: Request) {
         if (!item.payments) item.payments = {};
         const currentStatus = item.payments[data.monthKey]?.isPaid || false;
         const newPaidStatus = !currentStatus;
+        // Use per-month override amount if available, otherwise base amount
+        const effectiveAmount = item.payments[data.monthKey]?.amountOverride ?? item.amount;
 
         if (newPaidStatus && checklist.bookId) {
           const book = await prisma.book.findUnique({ where: { id: checklist.bookId } });
@@ -314,8 +360,8 @@ export async function POST(req: Request) {
               method: "Online",
               category: checklist.name,
               description: `Bayaran: ${item.name} (${data.monthKey})`,
-              amount: item.amount,
-              runningBalance: book ? book.netBalance - item.amount : -item.amount,
+              amount: effectiveAmount,
+              runningBalance: book ? book.netBalance - effectiveAmount : -effectiveAmount,
               timestamp: new Date()
             }
           });
@@ -324,13 +370,17 @@ export async function POST(req: Request) {
             await prisma.book.update({
               where: { id: book.id },
               data: {
-                netBalance: book.netBalance - item.amount,
-                totalCashOut: book.totalCashOut + item.amount
+                netBalance: book.netBalance - effectiveAmount,
+                totalCashOut: book.totalCashOut + effectiveAmount
               }
             });
           }
 
-          item.payments[data.monthKey] = { isPaid: true, transactionId: tx.id };
+          item.payments[data.monthKey] = {
+            ...item.payments[data.monthKey],
+            isPaid: true,
+            transactionId: tx.id,
+          };
         } else {
           if (item.payments[data.monthKey]?.transactionId && checklist.bookId) {
             const txId = item.payments[data.monthKey].transactionId;
@@ -350,7 +400,11 @@ export async function POST(req: Request) {
             }
             await prisma.transaction.delete({ where: { id: txId } });
           }
-          item.payments[data.monthKey] = { isPaid: newPaidStatus };
+          item.payments[data.monthKey] = {
+            ...item.payments[data.monthKey],
+            isPaid: newPaidStatus,
+            transactionId: undefined,
+          };
         }
 
         items[idx] = item;

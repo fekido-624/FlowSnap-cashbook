@@ -57,6 +57,7 @@ export default function ChecklistDetailPage() {
   const [editingItem, setEditingItem] = useState<ChecklistItem | null>(null);
   const [editName, setEditName] = useState("");
   const [editAmount, setEditAmount] = useState("");
+  const [editMonthOnly, setEditMonthOnly] = useState(false);
   const [api, setApi] = useState<CarouselApi>();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showHidden, setShowHidden] = useState(false);
@@ -118,10 +119,11 @@ export default function ChecklistDetailPage() {
   const stats = useMemo(() => {
     if (!checklist) return { total: 0, paid: 0, pending: 0 };
     return filteredItems.reduce((acc, item) => {
-      acc.total += item.amount;
+      const effectiveAmt = item.payments?.[currentMonthKey]?.amountOverride ?? item.amount;
+      acc.total += effectiveAmt;
       const isPaid = item.payments?.[currentMonthKey]?.isPaid || false;
-      if (isPaid) acc.paid += item.amount;
-      else acc.pending += item.amount;
+      if (isPaid) acc.paid += effectiveAmt;
+      else acc.pending += effectiveAmt;
       return acc;
     }, { total: 0, paid: 0, pending: 0 });
   }, [filteredItems, currentMonthKey]);
@@ -143,9 +145,10 @@ export default function ChecklistDetailPage() {
   const handleUpdateItem = async () => {
     if (!user || !editingItem || !editName.trim() || !editAmount) return;
     try {
-      await updateChecklistItem(user.uid, id, editingItem.id, editName.trim(), parseFloat(editAmount), currentMonthKey);
+      await updateChecklistItem(user.uid, id, editingItem.id, editName.trim(), parseFloat(editAmount), currentMonthKey, editMonthOnly);
       setEditingItem(null);
-      toast({ title: "Item Dikemas Kini", description: "Maklumat item telah disimpan." });
+      setEditMonthOnly(false);
+      toast({ title: "Item Dikemas Kini", description: editMonthOnly ? `Harga dikemas kini untuk ${months[currentSlide].label} sahaja.` : "Maklumat item telah disimpan." });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Ralat", description: e.message });
     }
@@ -307,8 +310,10 @@ export default function ChecklistDetailPage() {
                               monthKey={month.key}
                               onEdit={() => {
                                 setEditingItem(item);
+                                setEditMonthOnly(false);
                                 setEditName(item.name);
-                                setEditAmount(item.amount.toString());
+                                const monthOverride = item.payments?.[month.key]?.amountOverride;
+                                setEditAmount((monthOverride ?? item.amount).toString());
                               }}
                               onDelete={() => handleMonthlyDelete(item.id, item.name)}
                             />
@@ -363,9 +368,25 @@ export default function ChecklistDetailPage() {
               <Label>Harga (RM)</Label>
               <Input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} className="rounded-xl h-12" />
             </div>
+            <div className="flex items-center gap-3 rounded-2xl bg-amber-50 border border-amber-200 p-4">
+              <Checkbox
+                id="edit-month-only"
+                checked={editMonthOnly}
+                onCheckedChange={(v) => setEditMonthOnly(v === true)}
+                className="w-5 h-5 rounded-lg"
+              />
+              <label htmlFor="edit-month-only" className="text-sm cursor-pointer select-none">
+                <span className="font-bold text-amber-800">Ubah harga bulan ini sahaja</span>
+                <span className="block text-xs text-amber-600 mt-0.5">
+                  Harga bulan lain kekal RM{editingItem?.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} (harga asal)
+                </span>
+              </label>
+            </div>
           </div>
           <DialogFooter>
-            <Button className="w-full h-12 rounded-xl font-bold" onClick={handleUpdateItem}>Simpan Perubahan</Button>
+            <Button className="w-full h-12 rounded-xl font-bold" onClick={handleUpdateItem}>
+              {editMonthOnly ? `Simpan (${months[currentSlide].label} sahaja)` : 'Simpan Perubahan'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -390,11 +411,14 @@ function ItemRow({
 }) {
   const isPaid = item.payments?.[monthKey]?.isPaid || false;
   const transactionId = item.payments?.[monthKey]?.transactionId;
+  const monthOverride = item.payments?.[monthKey]?.amountOverride;
+  const effectiveAmount = monthOverride ?? item.amount;
+  const hasOverride = monthOverride !== undefined && monthOverride !== item.amount;
 
   const historyStats = useMemo(() => {
-    const paidMonths = Object.values(item.payments || {}).filter(p => p.isPaid);
-    const count = paidMonths.length;
-    const total = count * item.amount;
+    const paidEntries = Object.entries(item.payments || {}).filter(([, p]) => p.isPaid);
+    const count = paidEntries.length;
+    const total = paidEntries.reduce((sum, [, p]) => sum + (p.amountOverride ?? item.amount), 0);
     return { count, total };
   }, [item.payments, item.amount]);
 
@@ -408,8 +432,13 @@ function ItemRow({
       <div className="flex-1 min-w-0">
         <p className={`font-black text-base truncate ${isPaid ? 'line-through text-muted-foreground' : ''}`}>{item.name}</p>
         <div className="flex flex-col gap-1.5 mt-1">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-black text-primary">RM{item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-black text-primary">RM{effectiveAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            {hasOverride && (
+              <span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                Harga khas bulan ini
+              </span>
+            )}
             {transactionId && (
               <span className="flex items-center gap-1 bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full text-[10px] font-black">
                 <CheckCircle2 className="w-3 h-3" /> DIREKOD

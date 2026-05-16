@@ -1,4 +1,4 @@
-﻿// Prisma-backed database service layer.
+// Prisma-backed database service layer.
 export interface Book {
   id: string;
   name: string;
@@ -27,6 +27,7 @@ export interface Transaction {
 export interface MonthlyPayment {
   isPaid: boolean;
   transactionId?: string;
+  amountOverride?: number;
 }
 
 export interface ChecklistItem {
@@ -176,8 +177,8 @@ export const addChecklistItem = async (checklistId: string, name: string, amount
   return requestDb<Checklist>('addChecklistItem', { checklistId, name, amount, validUntil });
 };
 
-export const updateChecklistItem = async (userId: string, checklistId: string, itemId: string, name: string, amount: number, monthKey?: string) => {
-  return requestDb<Checklist>('updateChecklistItem', { userId, checklistId, itemId, name, amount, monthKey });
+export const updateChecklistItem = async (userId: string, checklistId: string, itemId: string, name: string, amount: number, monthKey?: string, editMonthOnly?: boolean) => {
+  return requestDb<Checklist>('updateChecklistItem', { userId, checklistId, itemId, name, amount, monthKey, editMonthOnly });
 };
 
 export const toggleChecklistItem = async (userId: string, checklistId: string, itemId: string, monthKey: string) => {
