@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { Sidebar } from "@/components/Sidebar";
@@ -10,66 +10,34 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CheckCircle2, Lock, Unlock, ShieldCheck, Edit3, Trash2 } from "lucide-react";
-import { deleteUserData } from "@/lib/services/db";
 
 interface UserAccount {
   uid: string;
   email: string;
-  password: string;
   role: "admin" | "user";
   status: "pending" | "active" | "frozen";
 }
 
-const ACCOUNTS_KEY = "flowsnap_accounts";
-const USER_KEY = "flowsnap_user";
-const DEFAULT_ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@flowsnap.local";
-const DEFAULT_ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "admin123";
-
-const loadAccounts = (): UserAccount[] => {
-  if (typeof window === "undefined") return [];
-  try {
-    const value = localStorage.getItem(ACCOUNTS_KEY) || "[]";
-    const parsed = JSON.parse(value);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      return [
-        {
-          uid: "admin_default",
-          email: DEFAULT_ADMIN_EMAIL.toLowerCase(),
-          password: DEFAULT_ADMIN_PASSWORD,
-          role: "admin",
-          status: "active"
-        }
-      ];
-    }
-    return parsed as UserAccount[];
-  } catch {
-    return [
-      {
-        uid: "admin_default",
-          email: DEFAULT_ADMIN_EMAIL.toLowerCase(),
-          password: DEFAULT_ADMIN_PASSWORD,
-          role: "admin",
-          status: "active"
-      }
-    ];
+/**
+ * Call the server-side auth API.
+ */
+const authRequest = async <T,>(action: string, data: Record<string, any> = {}): Promise<T> => {
+  const res = await fetch('/api/auth', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, data }),
+  });
+  const body = await res.json();
+  if (!res.ok) {
+    throw new Error(body.error || 'Ralat pengesahan.');
   }
-};
-
-const saveAccounts = (accounts: UserAccount[]) => {
-  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+  return body as T;
 };
 
 const badgeColor = (status: UserAccount["status"]) => {
   if (status === "pending") return "bg-yellow-100 text-yellow-800";
   if (status === "active") return "bg-emerald-100 text-emerald-800";
   return "bg-rose-100 text-rose-800";
-};
-
-const normalizeAccounts = (accounts: UserAccount[]): UserAccount[] => {
-  return accounts.map((account) => ({
-    ...account,
-    status: account.status || 'pending',
-  }));
 };
 
 export default function AdminPage() {
@@ -87,6 +55,15 @@ export default function AdminPage() {
   const [deleteError, setDeleteError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const fetchAccounts = useCallback(async () => {
+    try {
+      const data = await authRequest<UserAccount[]>('getAccounts');
+      setAccounts(data);
+    } catch (err: any) {
+      console.error("Failed to load accounts:", err);
+    }
+  }, []);
+
   useEffect(() => {
     if (!loading) {
       if (!user) {
@@ -97,11 +74,9 @@ export default function AdminPage() {
         router.push('/');
         return;
       }
-      setAccounts(normalizeAccounts(loadAccounts()));
+      fetchAccounts();
     }
-  }, [loading, user, router]);
-
-  const refreshAccounts = () => setAccounts(normalizeAccounts(loadAccounts()));
+  }, [loading, user, router, fetchAccounts]);
 
   const openEdit = (account: UserAccount) => {
     setEditingAccount(account);
@@ -118,44 +93,19 @@ export default function AdminPage() {
     setEditError("");
   };
 
-  const saveEditedAccount = () => {
+  const saveEditedAccount = async () => {
     if (!editingAccount) return;
-    const normalizedEmail = editEmail.trim().toLowerCase();
-    if (!normalizedEmail) {
-      setEditError('Email diperlukan.');
-      return;
+    try {
+      await authRequest('updateAccount', {
+        uid: editingAccount.uid,
+        email: editEmail,
+        password: editPassword || undefined,
+      });
+      await fetchAccounts();
+      closeEdit();
+    } catch (err: any) {
+      setEditError(err?.message || "Ralat semasa mengemaskini.");
     }
-    const emailTaken = accounts.some((account) => account.uid !== editingAccount.uid && account.email === normalizedEmail);
-    if (emailTaken) {
-      setEditError('Email sudah digunakan oleh pengguna lain.');
-      return;
-    }
-    if (editPassword && editPassword.length < 6) {
-      setEditError('Kata laluan mesti sekurang-kurangnya 6 aksara jika ditukar.');
-      return;
-    }
-
-    const updated = accounts.map((account) => {
-      if (account.uid !== editingAccount.uid) return account;
-      return {
-        ...account,
-        email: normalizedEmail,
-        password: editPassword ? editPassword : account.password
-      };
-    });
-
-    saveAccounts(updated);
-    setAccounts(updated);
-
-    const currentUser = localStorage.getItem(USER_KEY);
-    if (currentUser) {
-      const parsed = JSON.parse(currentUser);
-      if (parsed.uid === editingAccount.uid) {
-        localStorage.setItem(USER_KEY, JSON.stringify({ ...parsed, email: normalizedEmail }));
-      }
-    }
-
-    closeEdit();
   };
 
   const expectedDeleteText = deletingAccount ? `PADAM ${deletingAccount.email}` : "";
@@ -193,10 +143,8 @@ export default function AdminPage() {
 
     setIsDeleting(true);
     try {
-      await deleteUserData(deletingAccount.uid);
-      const updated = accounts.filter((account) => account.uid !== deletingAccount.uid);
-      saveAccounts(updated);
-      setAccounts(updated);
+      await authRequest('deleteAccount', { uid: deletingAccount.uid });
+      await fetchAccounts();
       setIsDeleteOpen(false);
       setDeletingAccount(null);
       setDeleteConfirmText("");
@@ -207,12 +155,13 @@ export default function AdminPage() {
     }
   };
 
-  const updateStatus = (uid: string, status: UserAccount['status']) => {
-    const updated = accounts.map((account) =>
-      account.uid === uid ? { ...account, status } : account
-    );
-    saveAccounts(updated);
-    setAccounts(updated);
+  const updateStatus = async (uid: string, status: UserAccount['status']) => {
+    try {
+      await authRequest('updateAccountStatus', { uid, status });
+      await fetchAccounts();
+    } catch (err: any) {
+      console.error("Failed to update status:", err);
+    }
   };
 
   const pendingUsers = useMemo(() => accounts.filter((account) => account.status === 'pending'), [accounts]);
