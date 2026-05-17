@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { subscribeToBook, Book } from "@/lib/services/db";
 
+
 interface FilterDrawerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -37,6 +38,7 @@ export function FilterDrawer({ isOpen, onClose, currentFilter, onApply, bookId }
         <SheetHeader>
           <SheetTitle className="text-2xl font-black text-center mb-6">Tapis Transaksi</SheetTitle>
         </SheetHeader>
+
         <div className="space-y-6 py-4">
 
           {/* Date Range Filter */}
@@ -105,22 +107,46 @@ export function FilterDrawer({ isOpen, onClose, currentFilter, onApply, bookId }
           {/* Category Filter */}
           <div className="space-y-2">
             <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Kategori</Label>
-            <Select value={filter.category} onValueChange={(v) => setFilter({ ...filter, category: v })}>
-              <SelectTrigger className="h-12 rounded-xl">
-                <SelectValue placeholder="Semua Kategori" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="All">Semua Kategori</SelectItem>
-                {book?.customCategories?.map((cat) => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <details className="relative">
+              <summary className="w-full h-12 rounded-xl border bg-background px-4 text-sm flex items-center justify-between cursor-pointer list-none">
+                <span className={filter.categories?.length > 0 ? 'text-foreground font-bold' : 'text-muted-foreground'}>
+                  {filter.categories?.length > 0 ? `${filter.categories.length} dipilih` : 'Semua Kategori'}
+                </span>
+                <span className="text-muted-foreground">▼</span>
+              </summary>
+              <div className="mt-1 border rounded-xl bg-background shadow-lg p-2 flex flex-col gap-1">
+                {book?.customCategories?.map((cat) => {
+                  const selected = (filter.categories || []).includes(cat);
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => {
+                        const current = filter.categories || [];
+                        const updated = selected
+                          ? current.filter((c: string) => c !== cat)
+                          : [...current, cat];
+                        setFilter({ ...filter, categories: updated });
+                      }}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all text-left ${selected ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
+                        }`}
+                    >
+                      <span className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${selected ? 'bg-primary border-primary' : 'border-muted-foreground'
+                        }`}>
+                        {selected && <span className="text-white text-[10px]">✓</span>}
+                      </span>
+                      {cat}
+                    </button>
+                  );
+                })}
+              </div>
+            </details>
           </div>
         </div>
+
         <SheetFooter className="mt-8 flex flex-row gap-4">
           <Button variant="outline" className="flex-1 h-12 rounded-xl font-bold" onClick={() => {
-            const reset = { method: 'All', category: 'All', type: 'All', dateFrom: '', dateTo: '' };
+            const reset = { method: 'All', category: 'All', categories: [], type: 'All', dateFrom: '', dateTo: '' };
             setFilter(reset);
             onApply(reset);
             onClose();
@@ -130,6 +156,7 @@ export function FilterDrawer({ isOpen, onClose, currentFilter, onApply, bookId }
             onClose();
           }}>Guna Tapisan</Button>
         </SheetFooter>
+
       </SheetContent>
     </Sheet>
   );

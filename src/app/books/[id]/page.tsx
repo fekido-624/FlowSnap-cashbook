@@ -34,7 +34,7 @@ export default function BookDetailPage() {
   const { user, loading } = useAuth();
   const [book, setBook] = useState<Book | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [filter, setFilter] = useState({ method: 'All', category: 'All', type: 'All', dateFrom: '', dateTo: '' });
+  const [filter, setFilter] = useState({ method: 'All', category: 'All', categories: [] as string[], type: 'All', dateFrom: '', dateTo: '' });
   const [searchQuery, setSearchQuery] = useState("");
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [txType, setTxType] = useState<'in' | 'out'>('in');
@@ -67,7 +67,7 @@ export default function BookDetailPage() {
   const filteredTransactions = useMemo(() => {
     return transactions.filter(tx => {
       const matchMethod = filter.method === 'All' || tx.method === filter.method;
-      const matchCategory = filter.category === 'All' || tx.category === filter.category;
+      const matchCategory = (filter.categories?.length === 0) || filter.categories?.includes(tx.category);
       const matchType = filter.type === 'All' || tx.type === filter.type;
 
       const txDate = new Date(tx.timestamp);
@@ -161,8 +161,7 @@ export default function BookDetailPage() {
     </div>
   );
 
-  const isFilterActive = filter.method !== 'All' || filter.category !== 'All' || filter.type !== 'All' || !!filter.dateFrom || !!filter.dateTo || searchQuery !== "";
-
+  const isFilterActive = filter.method !== 'All' || filter.categories?.length > 0 || filter.type !== 'All' || !!filter.dateFrom || !!filter.dateTo || searchQuery !== "";
   return (
     <div className="min-h-svh bg-background flex flex-col md:flex-row">
       <Sidebar />
@@ -315,10 +314,10 @@ export default function BookDetailPage() {
                         <button onClick={() => setFilter({ ...filter, method: 'All' })} className="ml-1 hover:opacity-70">✕</button>
                       </span>
                     )}
-                    {filter.category !== 'All' && (
+                    {filter.categories?.length > 0 && (
                       <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-full text-xs font-bold">
-                        🏷 {filter.category}
-                        <button onClick={() => setFilter({ ...filter, category: 'All' })} className="ml-1 hover:opacity-70">✕</button>
+                        🏷 {filter.categories.join(', ')}
+                        <button onClick={() => setFilter({ ...filter, categories: [] })} className="ml-1 hover:opacity-70">✕</button>
                       </span>
                     )}
                   </div>

@@ -92,6 +92,18 @@ export async function POST(req: Request) {
         return new Response(JSON.stringify({ success: true }), { status: 200 });
       }
 
+      case "deleteCategoryFromBook": {
+        const book = await prisma.book.findUnique({ where: { id: data.bookId } });
+        if (!book) return new Response(JSON.stringify({ error: "Buku tidak ditemui" }), { status: 404 });
+        const categories = Array.isArray(book.customCategories) ? [...book.customCategories] : DEFAULT_CATEGORIES;
+        const updatedCategories = categories.filter(cat => cat !== data.category);
+        await prisma.book.update({
+          where: { id: data.bookId },
+          data: { customCategories: JSON.stringify(updatedCategories) }
+        });
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+      }
+
       case "getTransactionsByBook": {
         const txs = await prisma.transaction.findMany({
           where: { bookId: data.bookId },

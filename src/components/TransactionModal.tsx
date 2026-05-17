@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addTransaction, updateTransaction, deleteTransaction, addCategoryToBook, subscribeToBook, Book, Transaction } from "@/lib/services/db";
+import { addTransaction, updateTransaction, deleteTransaction, addCategoryToBook, deleteCategoryFromBook, subscribeToBook, Book, Transaction } from "@/lib/services/db";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, X, Trash2 } from "lucide-react";
+
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -166,7 +167,22 @@ export function TransactionModal({ isOpen, onClose, type: initialType, bookId, e
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
                       {book?.customCategories?.map((cat) => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        <div key={cat} className="flex items-center justify-between pr-2">
+                          <SelectItem value={cat} className="flex-1">{cat}</SelectItem>
+                          <button
+                            type="button"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (!confirm(`Padam kategori "${cat}"?`)) return;
+                              await deleteCategoryFromBook(bookId, cat);
+                              if (category === cat) setCategory("");
+                              toast({ title: "Kategori Dipadam", description: `"${cat}" telah dipadam.` });
+                            }}
+                            className="text-rose-400 hover:text-rose-600 p-1 rounded"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
                       ))}
                     </SelectContent>
                   </Select>

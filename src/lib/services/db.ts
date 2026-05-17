@@ -90,6 +90,10 @@ export const addCategoryToBook = async (bookId: string, category: string) => {
   return requestDb<{ success: boolean }>('addCategoryToBook', { bookId, category });
 };
 
+export const deleteCategoryFromBook = async (bookId: string, category: string) => {
+  return requestDb<{ success: boolean }>('deleteCategoryFromBook', { bookId, category });
+};
+
 export const subscribeToBooks = (userId: string, callback: (books: Book[]) => void) => {
   const update = async () => {
     const books = await requestDb<Book[]>('getBooksByUser', { userId });
