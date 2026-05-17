@@ -74,14 +74,14 @@ export default function ChecklistsPage() {
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (!confirm("Padam keseluruhan checklist ini?"));
+    if (!confirm("Padam keseluruhan checklist ini?")) return;  // ✅
     try {
       await deleteChecklist(id);
       toast({ title: "Dipadam", description: "Checklist telah berjaya dibuang." });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Ralat", description: e.message });
     }
-  };
+};
 
   if (loading || !user) return null;
 
