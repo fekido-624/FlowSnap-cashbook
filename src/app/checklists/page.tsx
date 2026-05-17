@@ -49,8 +49,8 @@ export default function ChecklistsPage() {
         toast({ title: "Dikemas Kini", description: "Checklist telah berjaya dikemas kini." });
       } else {
         await createChecklist(
-          user.uid, 
-          newName.trim(), 
+          user.uid,
+          newName.trim(),
           selectedBookId === "none" ? undefined : selectedBookId
         );
         toast({ title: "Berjaya", description: "Checklist baru telah dicipta." });
@@ -82,6 +82,8 @@ export default function ChecklistsPage() {
       toast({ variant: "destructive", title: "Ralat", description: e.message });
     }
 };
+
+
 
   if (loading || !user) return null;
 
@@ -124,8 +126,8 @@ export default function ChecklistsPage() {
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <Label>Nama Checklist</Label>
-                    <Input 
-                      placeholder="Contoh: Barang Dapur, Bil Bulanan" 
+                    <Input
+                      placeholder="Contoh: Barang Dapur, Bil Bulanan"
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
                       className="rounded-xl h-12"
@@ -165,8 +167,8 @@ export default function ChecklistsPage() {
               </div>
             ) : (
               checklists.map((c) => (
-                <div 
-                  key={c.id} 
+                <div
+                  key={c.id}
                   onClick={() => router.push(`/checklists/${c.id}`)}
                   className="cursor-pointer group"
                 >
@@ -189,19 +191,19 @@ export default function ChecklistsPage() {
                         </div>
                       </div>
                       <div className="flex flex-col items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                        <Button 
+                        <Button
                           type="button"
-                          variant="ghost" 
-                          size="icon" 
+                          variant="ghost"
+                          size="icon"
                           onClick={(e) => handleEdit(e, c)}
                           className="rounded-full h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/5"
                         >
                           <Edit3 className="w-4 h-4" />
                         </Button>
-                        <Button 
+                        <Button
                           type="button"
-                          variant="ghost" 
-                          size="icon" 
+                          variant="ghost"
+                          size="icon"
                           onClick={(e) => handleDelete(e, c.id)}
                           className="rounded-full h-9 w-9 text-muted-foreground hover:text-rose-500 hover:bg-rose-50"
                         >

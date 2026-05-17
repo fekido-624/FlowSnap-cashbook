@@ -6,13 +6,13 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { subscribeToTransactions, subscribeToBook, deleteBook, Book, Transaction } from "@/lib/services/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { 
-  ArrowLeft, 
-  ArrowUpCircle, 
-  ArrowDownCircle, 
-  Filter, 
-  Plus, 
-  History, 
+import {
+  ArrowLeft,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Filter,
+  Plus,
+  History,
   Wallet,
   Smartphone,
   Trash2,
@@ -34,7 +34,7 @@ export default function BookDetailPage() {
   const { user, loading } = useAuth();
   const [book, setBook] = useState<Book | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [filter, setFilter] = useState({ method: 'All', category: 'All', type: 'All', month: 'All', dateRange: null as any });
+  const [filter, setFilter] = useState({ method: 'All', category: 'All', type: 'All', dateFrom: '', dateTo: '' });
   const [searchQuery, setSearchQuery] = useState("");
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [txType, setTxType] = useState<'in' | 'out'>('in');
@@ -69,18 +69,23 @@ export default function BookDetailPage() {
       const matchMethod = filter.method === 'All' || tx.method === filter.method;
       const matchCategory = filter.category === 'All' || tx.category === filter.category;
       const matchType = filter.type === 'All' || tx.type === filter.type;
-      const matchMonth = filter.month === 'All' || format(new Date(tx.timestamp), 'yyyy-MM') === filter.month;
-      const matchSearch = tx.category.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          (tx.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
-                          tx.amount.toString().includes(searchQuery);
-      return matchMethod && matchCategory && matchType && matchMonth && matchSearch;
+
+      const txDate = new Date(tx.timestamp);
+      const matchDate = (!filter.dateFrom || txDate >= new Date(filter.dateFrom)) &&
+        (!filter.dateTo || txDate <= new Date(filter.dateTo + 'T23:59:59'));
+
+      const matchSearch = tx.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (tx.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+        tx.amount.toString().includes(searchQuery);
+
+      return matchMethod && matchCategory && matchType && matchDate && matchSearch;
     });
   }, [transactions, filter, searchQuery]);
 
   const { categoryStats, totalExpenseSum } = useMemo(() => {
     const expenses = filteredTransactions.filter(tx => tx.type === 'out');
     const totalExpense = expenses.reduce((sum, tx) => sum + tx.amount, 0);
-    
+
     const stats = expenses.reduce((acc: any, tx) => {
       if (!acc[tx.category]) acc[tx.category] = 0;
       acc[tx.category] += tx.amount;
@@ -133,7 +138,7 @@ export default function BookDetailPage() {
 
   const handleDeleteBook = async () => {
     if (!confirm("Adakah anda pasti mahu memadam buku ini beserta semua transaksinya? Tindakan ini tidak boleh dibatalkan.")) return;
-    
+
     try {
       await deleteBook(id);
       toast({
@@ -156,7 +161,7 @@ export default function BookDetailPage() {
     </div>
   );
 
-  const isFilterActive = filter.method !== 'All' || filter.category !== 'All' || filter.type !== 'All' || filter.month !== 'All' || searchQuery !== "";
+  const isFilterActive = filter.method !== 'All' || filter.category !== 'All' || filter.type !== 'All' || !!filter.dateFrom || !!filter.dateTo || searchQuery !== "";
 
   return (
     <div className="min-h-svh bg-background flex flex-col md:flex-row">
@@ -174,10 +179,10 @@ export default function BookDetailPage() {
             <Button variant="ghost" size="icon" className="rounded-full text-rose-500 hover:text-rose-600 hover:bg-rose-50" onClick={handleDeleteBook}>
               <Trash2 className="w-5 h-5" />
             </Button>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className={`rounded-full ${isFilterActive ? 'text-primary border-primary' : ''}`} 
+            <Button
+              variant="outline"
+              size="icon"
+              className={`rounded-full ${isFilterActive ? 'text-primary border-primary' : ''}`}
               onClick={() => setIsFilterOpen(true)}
             >
               <Filter className="w-5 h-5" />
@@ -197,7 +202,7 @@ export default function BookDetailPage() {
                   RM{filteredStats.net.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </span>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white/10 rounded-[2rem] p-5 flex flex-col items-center">
                   <div className="flex items-center gap-2 mb-1">
@@ -217,36 +222,36 @@ export default function BookDetailPage() {
             </Card>
 
             <div className="hidden lg:block">
-               <Card className="border-none shadow-sm rounded-[2.5rem] bg-card p-8 space-y-8">
-                  <div className="flex flex-col gap-1 border-b border-dashed pb-4">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                      <TrendingDown className="w-4 h-4 text-rose-500" />
-                      Pecahan Perbelanjaan
-                    </h3>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-black">RM{totalExpenseSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                    </div>
+              <Card className="border-none shadow-sm rounded-[2.5rem] bg-card p-8 space-y-8">
+                <div className="flex flex-col gap-1 border-b border-dashed pb-4">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <TrendingDown className="w-4 h-4 text-rose-500" />
+                    Pecahan Perbelanjaan
+                  </h3>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-black">RM{totalExpenseSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
-                  
-                  {categoryStats.length === 0 ? (
-                    <p className="text-center py-10 text-sm text-muted-foreground italic">Tiada data perbelanjaan.</p>
-                  ) : (
-                    <div className="space-y-6">
-                      {categoryStats.map((stat) => (
-                        <div key={stat.name} className="space-y-2">
-                          <div className="flex justify-between items-end">
-                            <span className="text-sm font-bold">{stat.name}</span>
-                            <div className="text-right">
-                              <span className="text-xs font-black">RM{stat.value.toLocaleString()}</span>
-                              <span className="text-[10px] text-muted-foreground ml-2">({stat.percentage.toFixed(0)}%)</span>
-                            </div>
+                </div>
+
+                {categoryStats.length === 0 ? (
+                  <p className="text-center py-10 text-sm text-muted-foreground italic">Tiada data perbelanjaan.</p>
+                ) : (
+                  <div className="space-y-6">
+                    {categoryStats.map((stat) => (
+                      <div key={stat.name} className="space-y-2">
+                        <div className="flex justify-between items-end">
+                          <span className="text-sm font-bold">{stat.name}</span>
+                          <div className="text-right">
+                            <span className="text-xs font-black">RM{stat.value.toLocaleString()}</span>
+                            <span className="text-[10px] text-muted-foreground ml-2">({stat.percentage.toFixed(0)}%)</span>
                           </div>
-                          <Progress value={stat.percentage} className="h-2 rounded-full" />
                         </div>
-                      ))}
-                    </div>
-                  )}
-               </Card>
+                        <Progress value={stat.percentage} className="h-2 rounded-full" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
             </div>
           </div>
 
@@ -266,21 +271,21 @@ export default function BookDetailPage() {
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div className="relative flex-1">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input 
-                      placeholder="Cari kategori atau catatan..." 
+                    <Input
+                      placeholder="Cari kategori atau catatan..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-12 h-14 rounded-2xl border-none bg-card shadow-sm"
                     />
                   </div>
                   <div className="flex gap-2">
-                    <Button 
+                    <Button
                       className="h-14 px-6 rounded-2xl bg-emerald-500 hover:bg-emerald-600 font-bold flex gap-2 flex-1"
                       onClick={() => { setTxType('in'); setEditingTx(null); setIsTxModalOpen(true); }}
                     >
                       <Plus className="w-5 h-5" /> Masuk
                     </Button>
-                    <Button 
+                    <Button
                       className="h-14 px-6 rounded-2xl bg-rose-500 hover:bg-rose-600 font-bold flex gap-2 flex-1"
                       onClick={() => { setTxType('out'); setEditingTx(null); setIsTxModalOpen(true); }}
                     >
@@ -292,10 +297,10 @@ export default function BookDetailPage() {
                 {/* Active filter badges */}
                 {isFilterActive && (
                   <div className="flex flex-wrap gap-2">
-                    {filter.month !== 'All' && (
+                    {(filter.dateFrom || filter.dateTo) && (
                       <span className="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1.5 rounded-full text-xs font-bold">
-                        📅 {filter.month}
-                        <button onClick={() => setFilter({ ...filter, month: 'All' })} className="ml-1 hover:text-primary/70">✕</button>
+                        📅 {filter.dateFrom || '...'} → {filter.dateTo || '...'}
+                        <button onClick={() => setFilter({ ...filter, dateFrom: '', dateTo: '' })} className="ml-1 hover:text-primary/70">✕</button>
                       </span>
                     )}
                     {filter.type !== 'All' && (
@@ -334,15 +339,15 @@ export default function BookDetailPage() {
                     </div>
                   ) : (
                     filteredTransactions.map((tx) => (
-                      <Card 
-                        key={tx.id} 
+                      <Card
+                        key={tx.id}
                         className="border-none shadow-sm rounded-3xl overflow-hidden p-5 flex items-center gap-5 cursor-pointer hover:shadow-md transition-all bg-card"
                         onClick={() => handleEditTx(tx)}
                       >
                         <div className={`p-4 rounded-2xl ${tx.type === 'in' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
                           {tx.type === 'in' ? <ArrowUpCircle className="w-6 h-6" /> : <ArrowDownCircle className="w-6 h-6" />}
                         </div>
-                        
+
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-start mb-1">
                             <h3 className="font-black text-base truncate">{tx.category}</h3>
@@ -371,51 +376,51 @@ export default function BookDetailPage() {
               </TabsContent>
 
               <TabsContent value="analytics" className="lg:hidden">
-                 <Card className="border-none shadow-sm rounded-[2.5rem] bg-card p-8 space-y-8">
-                    <div className="flex flex-col gap-1 border-b border-dashed pb-4">
-                      <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                        <TrendingDown className="w-4 h-4 text-rose-500" />
-                        Pecahan Perbelanjaan
-                      </h3>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-2xl font-black">RM{totalExpenseSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                      </div>
+                <Card className="border-none shadow-sm rounded-[2.5rem] bg-card p-8 space-y-8">
+                  <div className="flex flex-col gap-1 border-b border-dashed pb-4">
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                      <TrendingDown className="w-4 h-4 text-rose-500" />
+                      Pecahan Perbelanjaan
+                    </h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-black">RM{totalExpenseSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                     </div>
-                    
-                    {categoryStats.length === 0 ? (
-                      <p className="text-center py-10 text-sm text-muted-foreground italic">Tiada data perbelanjaan.</p>
-                    ) : (
-                      <div className="space-y-6">
-                        {categoryStats.map((stat) => (
-                          <div key={stat.name} className="space-y-2">
-                            <div className="flex justify-between items-end">
-                              <span className="text-sm font-bold">{stat.name}</span>
-                              <div className="text-right">
-                                <span className="text-xs font-black">RM{stat.value.toLocaleString()}</span>
-                                <span className="text-[10px] text-muted-foreground ml-2">({stat.percentage.toFixed(0)}%)</span>
-                              </div>
+                  </div>
+
+                  {categoryStats.length === 0 ? (
+                    <p className="text-center py-10 text-sm text-muted-foreground italic">Tiada data perbelanjaan.</p>
+                  ) : (
+                    <div className="space-y-6">
+                      {categoryStats.map((stat) => (
+                        <div key={stat.name} className="space-y-2">
+                          <div className="flex justify-between items-end">
+                            <span className="text-sm font-bold">{stat.name}</span>
+                            <div className="text-right">
+                              <span className="text-xs font-black">RM{stat.value.toLocaleString()}</span>
+                              <span className="text-[10px] text-muted-foreground ml-2">({stat.percentage.toFixed(0)}%)</span>
                             </div>
-                            <Progress value={stat.percentage} className="h-2 rounded-full" />
                           </div>
-                        ))}
-                      </div>
-                    )}
-                 </Card>
+                          <Progress value={stat.percentage} className="h-2 rounded-full" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
               </TabsContent>
             </Tabs>
           </div>
         </div>
       </main>
 
-      <TransactionModal 
-        isOpen={isTxModalOpen} 
-        onClose={handleCloseModal} 
-        type={txType} 
-        bookId={id} 
+      <TransactionModal
+        isOpen={isTxModalOpen}
+        onClose={handleCloseModal}
+        type={txType}
+        bookId={id}
         editingTransaction={editingTx}
       />
 
-      <FilterDrawer 
+      <FilterDrawer
         isOpen={isFilterOpen}
         onClose={() => setIsFilterOpen(false)}
         currentFilter={filter}

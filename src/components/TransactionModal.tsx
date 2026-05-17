@@ -131,9 +131,9 @@ export function TransactionModal({ isOpen, onClose, type: initialType, bookId, e
             <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Jumlah</Label>
             <div className="relative">
               <span className="absolute left-4 top-[50%] translate-y-[-50%] font-bold text-2xl text-primary">RM</span>
-              <Input 
-                type="number" 
-                placeholder="0.00" 
+              <Input
+                type="number"
+                placeholder="0.00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 required
@@ -170,10 +170,10 @@ export function TransactionModal({ isOpen, onClose, type: initialType, bookId, e
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="icon" 
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
                     className="h-12 w-12 rounded-xl"
                     onClick={() => setIsAddingNewCategory(true)}
                   >
@@ -182,24 +182,24 @@ export function TransactionModal({ isOpen, onClose, type: initialType, bookId, e
                 </div>
               ) : (
                 <div className="flex gap-2">
-                  <Input 
-                    placeholder="Baru..." 
+                  <Input
+                    placeholder="Baru..."
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                     className="h-12 rounded-xl flex-1"
                     autoFocus
                   />
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
                     className="h-12 w-12 rounded-xl"
                     onClick={() => setIsAddingNewCategory(false)}
                   >
                     <X className="w-4 h-4" />
                   </Button>
-                  <Button 
-                    type="button" 
+                  <Button
+                    type="button"
                     className="h-12 w-12 rounded-xl"
                     onClick={handleAddNewCategory}
                   >
@@ -212,8 +212,8 @@ export function TransactionModal({ isOpen, onClose, type: initialType, bookId, e
 
           <div className="space-y-2">
             <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Catatan</Label>
-            <Input 
-              placeholder="Untuk apa?" 
+            <Input
+              placeholder="Untuk apa?"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="h-12 rounded-xl w-full"
@@ -221,18 +221,18 @@ export function TransactionModal({ isOpen, onClose, type: initialType, bookId, e
           </div>
 
           <DialogFooter className="pt-4 flex flex-col gap-3">
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className={`w-full h-14 rounded-2xl text-lg font-bold shadow-lg ${type === 'in' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-rose-500 hover:bg-rose-600'}`}
               disabled={loading || !category}
             >
               {loading ? "Memproses..." : editingTransaction ? "Kemas Kini" : "Simpan Transaksi"}
             </Button>
-            
+
             {editingTransaction && (
-              <Button 
-                type="button" 
-                variant="ghost" 
+              <Button
+                type="button"
+                variant="ghost"
                 className="w-full h-12 rounded-xl text-rose-500 font-bold flex gap-2 hover:bg-rose-50"
                 onClick={handleDelete}
                 disabled={loading}
