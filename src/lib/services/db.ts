@@ -38,6 +38,7 @@ export interface ChecklistItem {
   payments: { [monthKey: string]: MonthlyPayment };
   validUntil?: string;
   excludedMonths?: string[];
+  amountFrom?: { [monthKey: string]: number };
 }
 
 export interface Checklist {
@@ -181,8 +182,8 @@ export const addChecklistItem = async (checklistId: string, name: string, amount
   return requestDb<Checklist>('addChecklistItem', { checklistId, name, amount, validUntil });
 };
 
-export const updateChecklistItem = async (userId: string, checklistId: string, itemId: string, name: string, amount: number, monthKey?: string, editMonthOnly?: boolean) => {
-  return requestDb<Checklist>('updateChecklistItem', { userId, checklistId, itemId, name, amount, monthKey, editMonthOnly });
+export const updateChecklistItem = async (userId: string, checklistId: string, itemId: string, name: string, amount: number, monthKey?: string, editMonthOnly?: boolean, validUntil?: string) => {
+  return requestDb<Checklist>('updateChecklistItem', { userId, checklistId, itemId, name, amount, monthKey, editMonthOnly, validUntil });
 };
 
 export const toggleChecklistItem = async (userId: string, checklistId: string, itemId: string, monthKey: string) => {

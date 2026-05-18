@@ -3,12 +3,12 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/contexts/auth-context";
-import { 
-  subscribeToChecklist, 
-  addChecklistItem, 
+import {
+  subscribeToChecklist,
+  addChecklistItem,
   updateChecklistItem,
-  toggleChecklistItem, 
-  deleteChecklistItem, 
+  toggleChecklistItem,
+  deleteChecklistItem,
   deleteChecklist,
   excludeItemFromMonth,
   restoreItemForMonth,
@@ -21,20 +21,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { 
-  Carousel, 
-  CarouselContent, 
-  CarouselItem, 
-  type CarouselApi 
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi
 } from "@/components/ui/carousel";
-import { 
-  ArrowLeft, 
-  Plus, 
-  Trash2, 
-  ReceiptText, 
-  CheckCircle2, 
-  Loader2, 
-  Edit2, 
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
+  ReceiptText,
+  CheckCircle2,
+  Loader2,
+  Edit2,
   Calendar,
   ChevronLeft,
   ChevronRight,
@@ -58,10 +58,11 @@ export default function ChecklistDetailPage() {
   const [editName, setEditName] = useState("");
   const [editAmount, setEditAmount] = useState("");
   const [editMonthOnly, setEditMonthOnly] = useState(false);
+  const [editValidUntil, setEditValidUntil] = useState("");
   const [api, setApi] = useState<CarouselApi>();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showHidden, setShowHidden] = useState(false);
-  
+
   const router = useRouter();
   const { toast } = useToast();
 
@@ -119,7 +120,12 @@ export default function ChecklistDetailPage() {
   const stats = useMemo(() => {
     if (!checklist) return { total: 0, paid: 0, pending: 0 };
     return filteredItems.reduce((acc, item) => {
-      const effectiveAmt = item.payments?.[currentMonthKey]?.amountOverride ?? item.amount;
+      const effectiveAmt = (() => {
+        if (!item.amountFrom || Object.keys(item.amountFrom).length === 0) return item.amount;
+        const applicableKeys = Object.keys(item.amountFrom).filter(k => k <= currentMonthKey).sort().reverse();
+        if (applicableKeys.length === 0) return item.amount;
+        return item.amountFrom[applicableKeys[0]];
+      })();
       acc.total += effectiveAmt;
       const isPaid = item.payments?.[currentMonthKey]?.isPaid || false;
       if (isPaid) acc.paid += effectiveAmt;
@@ -145,9 +151,10 @@ export default function ChecklistDetailPage() {
   const handleUpdateItem = async () => {
     if (!user || !editingItem || !editName.trim() || !editAmount) return;
     try {
-      await updateChecklistItem(user.uid, id, editingItem.id, editName.trim(), parseFloat(editAmount), currentMonthKey, editMonthOnly);
+      await updateChecklistItem(user.uid, id, editingItem.id, editName.trim(), parseFloat(editAmount), currentMonthKey, editMonthOnly, editValidUntil || undefined);
       setEditingItem(null);
       setEditMonthOnly(false);
+      setEditValidUntil("");
       toast({ title: "Item Dikemas Kini", description: editMonthOnly ? `Harga dikemas kini untuk ${months[currentSlide].label} sahaja.` : "Maklumat item telah disimpan." });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Ralat", description: e.message });
@@ -193,15 +200,15 @@ export default function ChecklistDetailPage() {
             </Button>
             <h1 className="text-2xl font-black truncate">{checklist.name}</h1>
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => {
               if (confirm("Padam keseluruhan checklist ini? Rekod lama dalam Buku Akaun akan tetap kekal.")) {
                 deleteChecklist(id);
                 router.push("/checklists");
               }
-            }} 
+            }}
             className="rounded-full text-rose-500 hover:bg-rose-50"
           >
             <Trash2 className="w-5 h-5" />
@@ -246,7 +253,7 @@ export default function ChecklistDetailPage() {
               <div className="space-y-3">
                 <div className="space-y-1">
                   <Label className="text-[10px] font-bold ml-1 text-muted-foreground uppercase tracking-widest">Nama Item</Label>
-                  <Input 
+                  <Input
                     placeholder="Contoh: Bil Elektrik"
                     value={newItemName}
                     onChange={(e) => setNewItemName(e.target.value)}
@@ -255,9 +262,9 @@ export default function ChecklistDetailPage() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[10px] font-bold ml-1 text-muted-foreground uppercase tracking-widest">Harga (RM)</Label>
-                  <Input 
+                  <Input
                     type="number"
-                    placeholder="0.00" 
+                    placeholder="0.00"
                     value={newItemAmount}
                     onChange={(e) => setNewItemAmount(e.target.value)}
                     className="h-12 rounded-xl border-none shadow-sm"
@@ -265,7 +272,7 @@ export default function ChecklistDetailPage() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[10px] font-bold ml-1 text-muted-foreground uppercase tracking-widest">Aktif Sehingga (Pilihan)</Label>
-                  <Input 
+                  <Input
                     type="month"
                     value={newItemValidUntil}
                     onChange={(e) => setNewItemValidUntil(e.target.value)}
@@ -302,11 +309,11 @@ export default function ChecklistDetailPage() {
                           </div>
                         ) : (
                           filteredItems.map((item) => (
-                            <ItemRow 
-                              key={item.id} 
-                              item={item} 
-                              userUid={user!.uid} 
-                              checklistId={id} 
+                            <ItemRow
+                              key={item.id}
+                              item={item}
+                              userUid={user!.uid}
+                              checklistId={id}
                               monthKey={month.key}
                               onEdit={() => {
                                 setEditingItem(item);
@@ -314,6 +321,7 @@ export default function ChecklistDetailPage() {
                                 setEditName(item.name);
                                 const monthOverride = item.payments?.[month.key]?.amountOverride;
                                 setEditAmount((monthOverride ?? item.amount).toString());
+                                setEditValidUntil(item.validUntil || "");
                               }}
                               onDelete={() => handleMonthlyDelete(item.id, item.name)}
                             />
@@ -323,26 +331,26 @@ export default function ChecklistDetailPage() {
 
                       {excludedItems.length > 0 && (
                         <div className="mt-8 space-y-4 border-t pt-8 border-dashed">
-                           <Button 
-                             variant="ghost" 
-                             className="w-full text-xs font-bold uppercase tracking-widest text-muted-foreground hover:bg-muted/50 rounded-2xl h-12"
-                             onClick={() => setShowHidden(!showHidden)}
-                           >
-                             {showHidden ? 'Sembunyikan' : 'Lihat'} {excludedItems.length} Item Dipadam Bulan Ini
-                           </Button>
-                           
-                           {showHidden && (
-                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 opacity-60">
-                                {excludedItems.map(item => (
-                                  <div key={item.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl">
-                                    <span className="text-sm font-medium line-through truncate mr-2">{item.name}</span>
-                                    <Button variant="outline" size="sm" onClick={() => handleRestore(item.id)} className="h-8 px-3 text-[10px] font-bold flex gap-1 rounded-lg">
-                                      <RotateCcw className="w-3 h-3" /> Pulihkan
-                                    </Button>
-                                  </div>
-                                ))}
-                             </div>
-                           )}
+                          <Button
+                            variant="ghost"
+                            className="w-full text-xs font-bold uppercase tracking-widest text-muted-foreground hover:bg-muted/50 rounded-2xl h-12"
+                            onClick={() => setShowHidden(!showHidden)}
+                          >
+                            {showHidden ? 'Sembunyikan' : 'Lihat'} {excludedItems.length} Item Dipadam Bulan Ini
+                          </Button>
+
+                          {showHidden && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 opacity-60">
+                              {excludedItems.map(item => (
+                                <div key={item.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl">
+                                  <span className="text-sm font-medium line-through truncate mr-2">{item.name}</span>
+                                  <Button variant="outline" size="sm" onClick={() => handleRestore(item.id)} className="h-8 px-3 text-[10px] font-bold flex gap-1 rounded-lg">
+                                    <RotateCcw className="w-3 h-3" /> Pulihkan
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -365,6 +373,16 @@ export default function ChecklistDetailPage() {
               <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="rounded-xl h-12" />
             </div>
             <div className="space-y-2">
+              <Label>Aktif Sehingga (Pilihan)</Label>
+              <Input
+                type="month"
+                value={editValidUntil}
+                onChange={(e) => setEditValidUntil(e.target.value)}
+                className="rounded-xl h-12"
+              />
+              <p className="text-[10px] text-muted-foreground px-1">Kosongkan untuk tiada had tarikh</p>
+            </div>
+            <div className="space-y-2">
               <Label>Harga (RM)</Label>
               <Input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} className="rounded-xl h-12" />
             </div>
@@ -376,16 +394,14 @@ export default function ChecklistDetailPage() {
                 className="w-5 h-5 rounded-lg"
               />
               <label htmlFor="edit-month-only" className="text-sm cursor-pointer select-none">
-                <span className="font-bold text-amber-800">Ubah harga bulan ini sahaja</span>
-                <span className="block text-xs text-amber-600 mt-0.5">
-                  Harga bulan lain kekal RM{editingItem?.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} (harga asal)
-                </span>
+                <span className="font-bold text-amber-800">Kemas kini harga dari bulan ini</span>
+
               </label>
             </div>
           </div>
           <DialogFooter>
             <Button className="w-full h-12 rounded-xl font-bold" onClick={handleUpdateItem}>
-              {editMonthOnly ? `Simpan (${months[currentSlide].label} sahaja)` : 'Simpan Perubahan'}
+              {editMonthOnly ? `Harga baru mulai ${months[currentSlide].label}` : 'Simpan Perubahan'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -394,26 +410,32 @@ export default function ChecklistDetailPage() {
   );
 }
 
-function ItemRow({ 
-  item, 
-  userUid, 
-  checklistId, 
-  monthKey, 
-  onEdit, 
-  onDelete 
-}: { 
-  item: ChecklistItem, 
-  userUid: string, 
-  checklistId: string, 
-  monthKey: string, 
+function ItemRow({
+  item,
+  userUid,
+  checklistId,
+  monthKey,
+  onEdit,
+  onDelete
+}: {
+  item: ChecklistItem,
+  userUid: string,
+  checklistId: string,
+  monthKey: string,
   onEdit: () => void,
   onDelete: () => void
 }) {
   const isPaid = item.payments?.[monthKey]?.isPaid || false;
   const transactionId = item.payments?.[monthKey]?.transactionId;
+  const effectiveAmount = useMemo(() => {
+    if (!item.amountFrom || Object.keys(item.amountFrom).length === 0) return item.amount;
+    const applicableKeys = Object.keys(item.amountFrom).filter(k => k <= monthKey).sort().reverse();
+    if (applicableKeys.length === 0) return item.amount;
+    return item.amountFrom[applicableKeys[0]];
+  }, [item.amountFrom, item.amount, monthKey]);
+
   const monthOverride = item.payments?.[monthKey]?.amountOverride;
-  const effectiveAmount = monthOverride ?? item.amount;
-  const hasOverride = monthOverride !== undefined && monthOverride !== item.amount;
+  const hasOverride = effectiveAmount !== item.amount;
 
   const historyStats = useMemo(() => {
     const paidEntries = Object.entries(item.payments || {}).filter(([, p]) => p.isPaid);
@@ -424,8 +446,8 @@ function ItemRow({
 
   return (
     <div className={`flex items-center gap-4 p-5 rounded-[2rem] border-none shadow-sm transition-all group ${isPaid ? 'bg-muted/50' : 'bg-card hover:shadow-md'}`}>
-      <Checkbox 
-        checked={isPaid} 
+      <Checkbox
+        checked={isPaid}
         onCheckedChange={() => toggleChecklistItem(userUid, checklistId, item.id, monthKey)}
         className="w-7 h-7 rounded-xl border-2"
       />
@@ -434,11 +456,7 @@ function ItemRow({
         <div className="flex flex-col gap-1.5 mt-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-black text-primary">RM{effectiveAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-            {hasOverride && (
-              <span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                Harga khas bulan ini
-              </span>
-            )}
+
             {transactionId && (
               <span className="flex items-center gap-1 bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full text-[10px] font-black">
                 <CheckCircle2 className="w-3 h-3" /> DIREKOD
@@ -457,9 +475,9 @@ function ItemRow({
         <Button variant="ghost" size="icon" onClick={onEdit} className="rounded-full h-10 w-10 text-muted-foreground hover:text-primary">
           <Edit2 className="w-5 h-5" />
         </Button>
-        <Button 
-          variant="ghost" 
-          size="icon" 
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={onDelete}
           className="rounded-full h-10 w-10 text-muted-foreground hover:text-rose-500 hover:bg-rose-50"
           title="Sembunyikan bulan ini"

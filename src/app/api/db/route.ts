@@ -277,17 +277,11 @@ export async function POST(req: Request) {
 
         // If editing for a specific month only, set an override on that month's payment
         if (editMonthOnly && data.monthKey) {
-          if (!item.payments) item.payments = {};
-          if (!item.payments[data.monthKey]) {
-            item.payments[data.monthKey] = { isPaid: false };
-          }
-          item.payments[data.monthKey] = {
-            ...item.payments[data.monthKey],
-            amountOverride: newAmount,
-          };
+          if (!item.amountFrom) item.amountFrom = {};
+          item.amountFrom[data.monthKey] = newAmount;
 
-          // Also update the linked transaction if already paid
-          if (item.payments[data.monthKey].isPaid && item.payments[data.monthKey].transactionId && checklist.bookId) {
+          // Update linked transaction if already paid for this month
+          if (item.payments?.[data.monthKey]?.isPaid && item.payments[data.monthKey].transactionId && checklist.bookId) {
             const txId = item.payments[data.monthKey].transactionId;
             const tx = await prisma.transaction.findUnique({ where: { id: txId } });
             if (tx) {
@@ -323,6 +317,10 @@ export async function POST(req: Request) {
             });
           }
           item.amount = newAmount;
+        }
+        // Update validUntil if provided
+        if (data.validUntil !== undefined) {
+          item.validUntil = data.validUntil || undefined;
         }
 
         // Name always updates globally
