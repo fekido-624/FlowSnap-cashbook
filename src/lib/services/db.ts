@@ -36,6 +36,7 @@ export interface ChecklistItem {
   amount: number;
   isFixed?: boolean;
   payments: { [monthKey: string]: MonthlyPayment };
+  validFrom?: string; // <--- TAMBAH INI
   validUntil?: string;
   excludedMonths?: string[];
   amountFrom?: { [monthKey: string]: number };
@@ -178,8 +179,15 @@ export const subscribeToChecklist = (id: string, callback: (data: Checklist | nu
   return () => clearInterval(interval);
 };
 
-export const addChecklistItem = async (checklistId: string, name: string, amount: number, validUntil?: string) => {
-  return requestDb<Checklist>('addChecklistItem', { checklistId, name, amount, validUntil });
+export const addChecklistItem = async (
+  checklistId: string,
+  name: string,
+  amount: number,
+  validUntil?: string,
+  validFrom?: string // <--- TAMBAH PARAMETER INI
+) => {
+  // Pastikan validFrom dihantar ke backend
+  return requestDb<Checklist>('addChecklistItem', { checklistId, name, amount, validUntil, validFrom });
 };
 
 export const updateChecklistItem = async (userId: string, checklistId: string, itemId: string, name: string, amount: number, monthKey?: string, editMonthOnly?: boolean, validUntil?: string) => {

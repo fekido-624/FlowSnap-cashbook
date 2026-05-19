@@ -253,6 +253,7 @@ export async function POST(req: Request) {
           name: data.name,
           amount: Number(data.amount) || 0,
           payments: {},
+          validFrom: data.validFrom || undefined, // <--- TAMBAH BARIS INI
           validUntil: data.validUntil,
           excludedMonths: []
         };
@@ -593,6 +594,7 @@ export async function POST(req: Request) {
               amount: Number(item.amount) || 0,
               isFixed: Boolean(item.isFixed),
               payments: newPayments,
+              validFrom: item.validFrom, // <--- TAMBAH BARIS INI
               validUntil: item.validUntil,
               excludedMonths: Array.isArray(item.excludedMonths) ? item.excludedMonths : []
             };

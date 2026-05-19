@@ -101,9 +101,10 @@ export default function ChecklistDetailPage() {
     if (!checklist) return [];
     const monthKey = months[currentSlide].key;
     return checklist.items.filter(item => {
+      const isStarted = !item.validFrom || monthKey >= item.validFrom; // <--- Semak tarikh mula
       const isStillValid = !item.validUntil || item.validUntil >= monthKey;
       const isNotExcluded = !item.excludedMonths?.includes(monthKey);
-      return isStillValid && isNotExcluded;
+      return isStarted && isStillValid && isNotExcluded;
     });
   }, [checklist, currentSlide, months]);
 
@@ -111,9 +112,10 @@ export default function ChecklistDetailPage() {
     if (!checklist) return [];
     const monthKey = months[currentSlide].key;
     return checklist.items.filter(item => {
+      const isStarted = !item.validFrom || monthKey >= item.validFrom; // <--- Semak tarikh mula
       const isStillValid = !item.validUntil || item.validUntil >= monthKey;
       const isExcluded = item.excludedMonths?.includes(monthKey);
-      return isStillValid && isExcluded;
+      return isStarted && isStillValid && isExcluded;
     });
   }, [checklist, currentSlide, months]);
 
@@ -136,9 +138,16 @@ export default function ChecklistDetailPage() {
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newItemName.trim() || !newItemAmount) return;
+    if (!newItemName.trim() || !newItemAmount || !newItemValidUntil) return;
     try {
-      await addChecklistItem(id, newItemName.trim(), parseFloat(newItemAmount), newItemValidUntil || undefined);
+      // Kita masukkan currentMonthKey sebagai validFrom
+      await addChecklistItem(
+        id,
+        newItemName.trim(),
+        parseFloat(newItemAmount),
+        newItemValidUntil || undefined,
+        currentMonthKey // <--- Hantar bulan mula di sini
+      );
       setNewItemName("");
       setNewItemAmount("");
       setNewItemValidUntil("");
@@ -274,6 +283,7 @@ export default function ChecklistDetailPage() {
                   <Label className="text-[10px] font-bold ml-1 text-muted-foreground uppercase tracking-widest">Aktif Sehingga (Pilihan)</Label>
                   <Input
                     type="month"
+                    required
                     value={newItemValidUntil}
                     onChange={(e) => setNewItemValidUntil(e.target.value)}
                     className="h-12 rounded-xl border-none shadow-sm"
@@ -427,15 +437,13 @@ function ItemRow({
 }) {
   const isPaid = item.payments?.[monthKey]?.isPaid || false;
   const transactionId = item.payments?.[monthKey]?.transactionId;
+
   const effectiveAmount = useMemo(() => {
     if (!item.amountFrom || Object.keys(item.amountFrom).length === 0) return item.amount;
     const applicableKeys = Object.keys(item.amountFrom).filter(k => k <= monthKey).sort().reverse();
     if (applicableKeys.length === 0) return item.amount;
     return item.amountFrom[applicableKeys[0]];
   }, [item.amountFrom, item.amount, monthKey]);
-
-  const monthOverride = item.payments?.[monthKey]?.amountOverride;
-  const hasOverride = effectiveAmount !== item.amount;
 
   const historyStats = useMemo(() => {
     const paidEntries = Object.entries(item.payments || {}).filter(([, p]) => p.isPaid);
@@ -449,6 +457,14 @@ function ItemRow({
     }, 0);
     return { count, total };
   }, [item.payments, item.amount, item.amountFrom]);
+
+  // TAMBAH FUNGSI INI: Untuk tukar "2027-12" kepada "Disember 2027"
+  const formatValidUntil = (dateStr?: string) => {
+    if (!dateStr) return "";
+    const [year, month] = dateStr.split("-");
+    // Gunakan fungsi format dari date-fns yang sedia ada
+    return format(new Date(Number(year), Number(month) - 1, 1), "MMMM yyyy");
+  };
 
   return (
     <div className={`flex items-center gap-4 p-5 rounded-[2rem] border-none shadow-sm transition-all group ${isPaid ? 'bg-muted/50' : 'bg-card hover:shadow-md'}`}>
@@ -468,7 +484,15 @@ function ItemRow({
                 <CheckCircle2 className="w-3 h-3" /> DIREKOD
               </span>
             )}
+
+            {/* TAMBAH BADGE INI: Paparan Bulan Tamat */}
+            {item.validUntil && (
+              <span className="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                ⏳ Tamat: {formatValidUntil(item.validUntil)}
+              </span>
+            )}
           </div>
+
           {historyStats.count > 0 && (
             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-primary/5 w-fit px-3 py-1 rounded-xl border border-primary/10">
               <History className="w-3 h-3 text-primary/50" />
