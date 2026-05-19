@@ -440,9 +440,15 @@ function ItemRow({
   const historyStats = useMemo(() => {
     const paidEntries = Object.entries(item.payments || {}).filter(([, p]) => p.isPaid);
     const count = paidEntries.length;
-    const total = paidEntries.reduce((sum, [, p]) => sum + (p.amountOverride ?? item.amount), 0);
+    const total = paidEntries.reduce((sum, [monthK, p]) => {
+      if (p.amountOverride !== undefined) return sum + p.amountOverride;
+      if (!item.amountFrom || Object.keys(item.amountFrom).length === 0) return sum + item.amount;
+      const applicableKeys = Object.keys(item.amountFrom).filter(k => k <= monthK).sort().reverse();
+      if (applicableKeys.length === 0) return sum + item.amount;
+      return sum + item.amountFrom[applicableKeys[0]];
+    }, 0);
     return { count, total };
-  }, [item.payments, item.amount]);
+  }, [item.payments, item.amount, item.amountFrom]);
 
   return (
     <div className={`flex items-center gap-4 p-5 rounded-[2rem] border-none shadow-sm transition-all group ${isPaid ? 'bg-muted/50' : 'bg-card hover:shadow-md'}`}>
